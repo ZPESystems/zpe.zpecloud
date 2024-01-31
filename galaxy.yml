@@ -1,0 +1,18 @@
+namespace: zpe
+name: zpecloud
+version: 1.0.0
+description: your collection description
+authors:
+  - Rene Neumann <rene.neumann@zpesystems.com>
+  - Leonardo Fernandes <leonardo.fernandes@zpesystems.com>
+  - Daniel Nesvera <daniel.nesvera@zpesystems.com>
+tags: [zpe, zpesystems, zpecloud, nodegrid, ng, nodegridos, management, networking, security, cloud]
+#dependencies:
+#  "zpe.nodegrid": ">=1.0.0"
+license:
+  - GPL-2.0-or-later
+license_file: LICENSE
+readme: README.md
+repository: https://github.com/ZPESystems/zpe.zpecloud
+homepage: https://zpesystems.com
+issues: https://github.com/ZPESystems/zpe.zpecloud/issues
