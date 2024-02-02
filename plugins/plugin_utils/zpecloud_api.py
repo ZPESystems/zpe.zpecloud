@@ -31,6 +31,10 @@ class ZPECloudAPI:
         if not HAS_REQUESTS:
             raise MissingDependencyError("Please install python requests library.")
 
+        # urlparse struggles to define netloc and path without scheme
+        if "http://" not in url and "https://" not in url:
+            url = f"https://{url}"
+
         url_parts = urlparse(url)
         netloc = url_parts.netloc.replace("www.", "")
 
