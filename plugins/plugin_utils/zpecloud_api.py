@@ -41,16 +41,16 @@ class ZPECloudAPI:
         self._url = f"https://api.{netloc}"
         self._zpe_cloud_session = requests.Session()
 
-    def _post(self, url: str, data: str) -> Union[Tuple[str, str], Tuple[str, None]]:
-        r = self._zpe_cloud_session.post(url=url, data=data, timeout=self.timeout)
+    def _post(self, url: str, data: Dict, headers: Dict) -> Union[Tuple[str, str], Tuple[str, None]]:
+        r = self._zpe_cloud_session.post(url=url, data=data, timeout=self.timeout, headers=headers)
 
         if r.status_code == 200:
             return r.text, None
         else:
             return "", r.reason
 
-    def _get(self, url: str) -> Union[Tuple[str, str], Tuple[str, None]]:
-        r = self._zpe_cloud_session.get(url=url, timeout=self.timeout)
+    def _get(self, url: str, headers: Dict) -> Union[Tuple[str, str], Tuple[str, None]]:
+        r = self._zpe_cloud_session.get(url=url, timeout=self.timeout, headers=headers)
 
         if r.status_code == 200:
             return r.text, None
@@ -62,7 +62,7 @@ class ZPECloudAPI:
             "email": username,
             "password": password
         }
-        content, err = self._post(url=f"{self._url}/user/auth", data=payload)
+        content, err = self._post(url=f"{self._url}/user/auth", data=payload, headers={})
         if err:
             return False, err
 
@@ -75,7 +75,8 @@ class ZPECloudAPI:
         if self._organization_name == organization_name:
             return True, None
 
-        content, err = self._get(url=f"{self._url}/account/company")
+        content, err = self._get(url=f"{self._url}/account/company",
+                                 headers={"Content-Type": "application/json"})
         if err:
             return False, err
 
@@ -89,9 +90,10 @@ class ZPECloudAPI:
                 break
 
         if self._company_id is None:
-            return False, f"Organization {organization_name} was not found or not authorized."
+            return False, f"Organization {organization_name} was not found or not authorized"
 
-        content, err = self._post(url=f"{self._url}/user/auth/{self._company_id}", data={})
+        content, err = self._post(url=f"{self._url}/user/auth/{self._company_id}", data={},
+                                  headers={"Content-Type": "application/json"})
         if err:
             return False, err
 
@@ -100,7 +102,8 @@ class ZPECloudAPI:
         return True, None
 
     def get_available_devices(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
-        content, err = self._get(url=f"{self._url}/device?enrolled=0")
+        content, err = self._get(url=f"{self._url}/device?enrolled=0",
+                                 headers={"Content-Type": "application/json"})
         if err:
             return None, err
 
@@ -110,7 +113,8 @@ class ZPECloudAPI:
         return devices, None
 
     def get_enrolled_devices(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
-        content, err = self._get(url=f"{self._url}/device?enrolled=1")
+        content, err = self._get(url=f"{self._url}/device?enrolled=1",
+                                 headers={"Content-Type": "application/json"})
         if err:
             return None, err
 
@@ -120,7 +124,8 @@ class ZPECloudAPI:
         return devices, None
 
     def get_groups(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
-        content, err = self._get(url=f"{self._url}/group")
+        content, err = self._get(url=f"{self._url}/group",
+                                 headers={"Content-Type": "application/json"})
         if err:
             return None, err
 
@@ -130,7 +135,8 @@ class ZPECloudAPI:
         return groups, None
 
     def get_sites(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
-        content, err = self._get(url=f"{self._url}/site")
+        content, err = self._get(url=f"{self._url}/site",
+                                 headers={"Content-Type": "application/json"})
         if err:
             return None, err
 
@@ -140,7 +146,8 @@ class ZPECloudAPI:
         return sites, None
 
     def get_custom_fields(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
-        content, err = self._get(url=f"{self._url}/template-custom-field?limit=10000")
+        content, err = self._get(url=f"{self._url}/template-custom-field?limit=10000",
+                                 headers={"Content-Type": "application/json"})
         if err:
             return None, err
 
