@@ -134,7 +134,7 @@ class CustomFieldScope:
 
 def name_sanitization(name: str) -> str:
     """Sanitize names of hosts, groups, and variables, to be complaint with requirements from Ansible."""
-    regex = re.compile(r"[^A-Za-z0-9\_\-]")
+    regex = re.compile(r"[^A-Za-z0-9\_]")
     name = name.lower()
     return regex.sub('_', name)
 

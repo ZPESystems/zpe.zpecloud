@@ -80,7 +80,7 @@ class ZPECloudAPI:
         for company in companies:
             name = company.get("business_name", None)
 
-            if name == self._organization:
+            if name == organization_name:
                 self._company_id = company.get("id", None)
                 break
 
