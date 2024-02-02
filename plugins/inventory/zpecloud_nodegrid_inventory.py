@@ -32,22 +32,30 @@ options:
       - URL of ZPE Cloud instance.
     default: "https://zpecloud.com"
     type: string
+    env:
+      - name: ZPECLOUD_URL
   username:
     description:
       - Username on ZPE Cloud.
       - Required for authentication with username and password.
     required: true
     type: string
+    env:
+      - name: ZPECLOUD_USERNAME
   password:
     description:
       - User password.
       - Required for authentication with username and password.
     type: string
     required: true
+    env:
+      - name: ZPECLOUD_PASSWORD
   organization:
     description:
       - Organization name inside ZPE Cloud. Used to switch organization if user has accounts in multiple organizations.
     type: string
+    env:
+      - name: ZPECLOUD_ORGANIZATION
 requirements:
   - requests
 """
