@@ -8,19 +8,22 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
+
 DOCUMENTATION = r"""
 name: zpecloud_nodegrid_inventory
 short_description: Inventory of Nodegrid devices located on ZPE Cloud
 description:
-  - This plugin performs the following:
+  - This plugin performs the following.
+  - Fetch information about device, and store it as variables (hostname, model, serial number, status, and Nodegrid version).
   - Get Nodegrid devices located on ZPE Cloud. These devices are added to the inventory as hosts, and indexed their serial number.
-  - Fetch information about device, and store it as variable, such as: hostname, model, serial number, status, and Nodegrid version.
-  - Create default groups: available, enrolled, failover, online, offline, on-premises. These groups are added to the inventory with the prefix zpecloud_device_<name>.
+  - Create default groups (available, enrolled, failover, online, offline, onpremise). These groups are added to the inventory with the prefix zpecloud_device_<name>.
   - Create groups based on ZPE Cloud groups. These groups are added to the inventory with the prefix zpecloud_group_<group-name>.
   - Create groups based on ZPE Cloud sites. These groups are added to the inventory with the prefix zpecloud_site_<site-name>.
   - Fetch custom fields from ZPE Cloud, and assign to devices as variables. These variables are added to the inventory with the prefix zpecloud_cf_<name>.
-  - Custom fields have the following scopes: global, group, site, and device. If multiple custom fields share the same name, inventory variable will receive the value of the scope with higher priority. Device scope has higher priority, and global scope the lower.
+  - Custom fields have scopes (global, group, site, and device). If multiple custom fields share the same name, inventory variable will receive the value of the scope with higher priority. Device scope has higher priority, and global scope the lower.
   - It requires a YAML configuration file with name "zpecloud.yml".
+author:
+  - Daniel Nesvera (@zpe-dnesvera)
 options:
   url:
     description:
@@ -31,11 +34,13 @@ options:
   username:
     description:
       - Username on ZPE Cloud.
+      - Required for authentication with username and password.
     required: true
     type: string
   password:
     description:
       - User password.
+      - Required for authentication with username and password.
     type: string
     required: true
     no_log: true
@@ -43,6 +48,8 @@ options:
     description:
       - Organization name inside ZPE Cloud. Used to switch organization if user has accounts in multiple organizations.
     type: string
+requirements:
+  - requests
 """
 
 EXAMPLES = r"""
@@ -500,8 +507,10 @@ class InventoryModule(BaseInventoryPlugin):
 
     def _create_api_session(self) -> None:
         url = self.get_option("url", None) or os.environ.get("ZPECLOUD_URL", None)
+
+        # default for url
         if url is None:
-            raise AnsibleParserError("Could not retrieve ZPE Cloud url from plugin configuration or environment.")
+            url = "https://zpecloud.com"
 
         username = self.get_option("username", None) or os.environ.get("ZPECLOUD_USERNAME", None)
         if username is None:
