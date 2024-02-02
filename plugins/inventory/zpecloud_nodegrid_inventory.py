@@ -16,7 +16,7 @@ description:
   - This plugin performs the following.
   - Fetch information about device, and store it as variables (hostname, model, serial number, status, and Nodegrid version).
   - Get Nodegrid devices located on ZPE Cloud. These devices are added to the inventory as hosts, and indexed their serial number.
-  - Create default groups (available, enrolled, failover, online, offline, onpremise). These groups are added to the inventory with the prefix zpecloud_device_<name>.
+  - Create default groups (available, enrolled, failover, online, offline). These groups are added to the inventory with the prefix zpecloud_device_<name>.
   - Create groups based on ZPE Cloud groups. These groups are added to the inventory with the prefix zpecloud_group_<group-name>.
   - Create groups based on ZPE Cloud sites. These groups are added to the inventory with the prefix zpecloud_site_<site-name>.
   - Fetch custom fields from ZPE Cloud, and assign to devices as variables. These variables are added to the inventory with the prefix zpecloud_cf_<name>.
@@ -101,7 +101,6 @@ class ZPECloudDefaultGroups:
     """Default groups to aggregate Nodegrid devices."""
     DEVICE_ENROLLED = f"{GroupPrefix.DEVICE}enrolled"
     DEVICE_AVAILABLE = f"{GroupPrefix.DEVICE}available"
-    DEVICE_ONPREMISE = f"{GroupPrefix.DEVICE}onpremises"
     DEVICE_ONLINE = f"{GroupPrefix.DEVICE}online"
     DEVICE_OFFLINE = f"{GroupPrefix.DEVICE}offline"
     DEVICE_FAILOVER = f"{GroupPrefix.DEVICE}failover"
@@ -118,7 +117,6 @@ class EnrollStatus:
     """"Enrollment status of Nodegrid devices."""
     ENROLLED = "enrolled"
     AVAILABLE = "available"
-    ONPREMISE = "on-premise"
 
 
 class CustomFieldScope:
@@ -380,12 +378,6 @@ class InventoryModule(BaseInventoryPlugin):
 
         device_list += self._validate_devices(available_devices, EnrollStatus.AVAILABLE)
 
-        onprem_devices, err = self._api_session.get_on_premise_devices()
-        if err:
-            raise AnsibleParserError(f"Failed to get devices from on premise tab. Error: {err}.")
-
-        device_list += self._validate_devices(onprem_devices, EnrollStatus.ONPREMISE)
-
         if len(device_list) == 0:
             AnsibleParserError("No device found in ZPE Cloud.")
 
@@ -415,8 +407,6 @@ class InventoryModule(BaseInventoryPlugin):
             # assign device to group based on enrollment status
             if device.enroll_status == EnrollStatus.ENROLLED:
                 self.inventory.add_child(ZPECloudDefaultGroups.DEVICE_ENROLLED, host_id)
-            elif device.enroll_status == EnrollStatus.ONPREMISE:
-                self.inventory.add_child(ZPECloudDefaultGroups.DEVICE_ONPREMISE, host_id)
             else:
                 self.inventory.add_child(ZPECloudDefaultGroups.DEVICE_AVAILABLE, host_id)
 
@@ -546,7 +536,6 @@ class InventoryModule(BaseInventoryPlugin):
         # create default groups
         self.inventory.add_group(ZPECloudDefaultGroups.DEVICE_ENROLLED)
         self.inventory.add_group(ZPECloudDefaultGroups.DEVICE_AVAILABLE)
-        self.inventory.add_group(ZPECloudDefaultGroups.DEVICE_ONPREMISE)
         self.inventory.add_group(ZPECloudDefaultGroups.DEVICE_ONLINE)
         self.inventory.add_group(ZPECloudDefaultGroups.DEVICE_OFFLINE)
         self.inventory.add_group(ZPECloudDefaultGroups.DEVICE_FAILOVER)

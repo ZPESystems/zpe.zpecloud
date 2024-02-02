@@ -92,16 +92,6 @@ class ZPECloudAPI:
 
         return True, None
 
-    def get_on_premise_devices(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
-        content, err = self._get(url=f"{self._url}/device/on-premise")
-        if err:
-            return None, err
-
-        devices = json.loads(content)
-        devices = devices.get("list")
-
-        return devices, None
-
     def get_available_devices(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
         content, err = self._get(url=f"{self._url}/device?enrolled=0")
         if err:
