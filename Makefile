@@ -20,6 +20,3 @@ lint-python:
 
 lint-yaml:
 	yamllint .
-
-lint-ansible:
-	echo "lint"

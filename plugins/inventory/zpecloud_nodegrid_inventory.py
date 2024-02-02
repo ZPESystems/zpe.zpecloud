@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 # Copyright (c) 2024, ZPE Systems <zpesystems.com>
@@ -20,7 +20,9 @@ description:
   - Create groups based on ZPE Cloud groups. These groups are added to the inventory with the prefix zpecloud_group_<group-name>.
   - Create groups based on ZPE Cloud sites. These groups are added to the inventory with the prefix zpecloud_site_<site-name>.
   - Fetch custom fields from ZPE Cloud, and assign to devices as variables. These variables are added to the inventory with the prefix zpecloud_cf_<name>.
-  - Custom fields have scopes (global, group, site, and device). If multiple custom fields share the same name, inventory variable will receive the value of the scope with higher priority. Device scope has higher priority, and global scope the lower.
+  - Custom fields have scopes (global, group, site, and device).
+  - If multiple custom fields share the same name, inventory variable will receive the value of the scope with higher priority.
+  - Device scope has higher priority, and global scope the lower.
   - It requires a YAML configuration file with name "zpecloud.yml".
 author:
   - Daniel Nesvera (@zpe-dnesvera)
@@ -28,8 +30,7 @@ options:
   url:
     description:
       - URL of ZPE Cloud instance.
-    default: ["https://zpecloud.com"]
-    required: true
+    default: "https://zpecloud.com"
     type: string
   username:
     description:
@@ -43,7 +44,6 @@ options:
       - Required for authentication with username and password.
     type: string
     required: true
-    no_log: true
   organization:
     description:
       - Organization name inside ZPE Cloud. Used to switch organization if user has accounts in multiple organizations.
@@ -86,6 +86,11 @@ class ZPECloudMissingBodyInfoError(Exception):
 
 class ZPECloudDefaultCustomField(Exception):
     """Raised once default custom field is created. Ansible will not use default ones."""
+    pass
+
+
+class ZPECloudDisabledCustomField(Exception):
+    """Raised once custom field is disabled on ZPE Cloud."""
     pass
 
 
@@ -148,8 +153,7 @@ class ZPECloudHost:
 
         serial_number = device_info.get("serial_number", None)
         if serial_number is None:
-            raise ZPECloudMissingBodyInfoError(f"Failed to get serial number from Nodegrid \
-                device. Hostname: {device_info.get('hostname')}.")
+            raise ZPECloudMissingBodyInfoError(f"Failed to get serial number from Nodegrid device. Hostname: {device_info.get('hostname')}.")
         else:
             self.serial_number = serial_number
 
@@ -179,8 +183,7 @@ class ZPECloudHost:
 
         status = device_info.get("device_status")
         if status is None:
-            raise ZPECloudMissingBodyInfoError(f"Failed to get status from Nodegrid device. \
-                                               Hostname: {device_info.get('hostname')}")
+            raise ZPECloudMissingBodyInfoError(f"Failed to get status from Nodegrid device. Hostname: {device_info.get('hostname')}")
         else:
             status = status.lower()
 
@@ -256,18 +259,20 @@ class ZPECustomFields:
         if name is None:
             raise ZPECloudMissingBodyInfoError("Failed to get name from ZPE Cloud custom field.")
         elif "." in name:
-            raise ZPECloudDefaultCustomField(f"Default custom fields from ZPE Cloud is not used on Ansible. \
-                                             Custom field name: {name}.")
+            raise ZPECloudDefaultCustomField(f"Default custom fields from ZPE Cloud is not used on Ansible. Custom field name: {name}.")
         else:
             name = name_sanitization(name)
             self.name = f"{GroupPrefix.CUSTOM_FIELD}{name}"
+
+        enabled = custom_field_info.get("enabled", False)
+        if not enabled:
+            raise ZPECloudDisabledCustomField(f"Custom field {name} is disabled.")
 
         reference = custom_field_info.get("reference", None)
 
         scope = custom_field_info.get("scope", None)
         if scope is None:
-            raise ZPECloudMissingBodyInfoError(f"Failed to get scope from ZPE CLoud custom field. \
-                                               Custom field name: {name}.")
+            raise ZPECloudMissingBodyInfoError(f"Failed to get scope from ZPE CLoud custom field. Custom field name: {name}.")
         else:
             self.scope = scope
 
@@ -277,14 +282,12 @@ class ZPECustomFields:
         elif scope == CustomFieldScope.GROUP or scope == CustomFieldScope.SITE or scope == CustomFieldScope.DEVICE:
             # reference will be null for global, but must have value for other scopes
             if reference is None:
-                raise ZPECloudMissingBodyInfoError(f"Failed to get reference from ZPE Cloud custom field. \
-                                                   Custom field name: {name}.")
+                raise ZPECloudMissingBodyInfoError(f"Failed to get reference from ZPE Cloud custom field. Custom field name: {name}.")
 
             if scope == CustomFieldScope.DEVICE:
                 serial_number = reference.split(" ")[-1]
                 if len(serial_number) == 0:
-                    raise ZPECloudMissingBodyInfoError(f"Failed to get reference from ZPE Cloud \
-                                                       custom field with device scope. Custom field name: {name}.")
+                    raise ZPECloudMissingBodyInfoError(f"Failed to get reference from ZPE Cloud custom field with device scope. Custom field name: {name}.")
 
                 self.reference = serial_number
 
@@ -292,27 +295,23 @@ class ZPECustomFields:
                 self.reference = name_sanitization(reference)
 
         else:
-            raise ZPECloudMissingBodyInfoError("Invalid scope from ZPE Cloud custom field. \
-                                               Custom field name: {name}.")
+            raise ZPECloudMissingBodyInfoError(f"Invalid scope from ZPE Cloud custom field. Custom field name: {name}.")
 
         value = custom_field_info.get("value", None)
         if value is None:
-            raise ZPECloudMissingBodyInfoError("Failed to get value from ZPE Cloud custom field. \
-                                               Custom field name: {name}.")
+            raise ZPECloudMissingBodyInfoError(f"Failed to get value from ZPE Cloud custom field. Custom field name: {name}.")
         else:
             self.value = value
 
         enabled = custom_field_info.get("enabled", None)
         if enabled is None:
-            raise ZPECloudMissingBodyInfoError("Failed get enabled property from ZPE Cloud custom field. \
-                                               Custom field name: {name}.")
+            raise ZPECloudMissingBodyInfoError(f"Failed get enabled property from ZPE Cloud custom field. Custom field name: {name}.")
         else:
             self.enabled = enabled
 
         dynamic = custom_field_info.get("dynamic", None)
         if dynamic is None:
-            raise ZPECloudMissingBodyInfoError("Failed to get dynamic property from ZPE Cloud custom field. \
-                                               Custom field name: {name}.")
+            raise ZPECloudMissingBodyInfoError(f"Failed to get dynamic property from ZPE Cloud custom field. Custom field name: {name}.")
         else:
             self.dynamic = dynamic
 
@@ -356,7 +355,9 @@ class InventoryModule(BaseInventoryPlugin):
             try:
                 valid_custom_fields.append(ZPECustomFields(cf))
             except ZPECloudDefaultCustomField as msg:
-                self.display.debug(f"Default custom field will be discarded. {msg}")
+                self.display.debug(f"Custom field will be discarded. {msg}")
+            except ZPECloudDisabledCustomField as msg:
+                self.display.debug(f"Custom field will be discarded. {msg}")
             except Exception as err:
                 self.display.warning(f"Failed to validate custom field. Error: {err}")
 
