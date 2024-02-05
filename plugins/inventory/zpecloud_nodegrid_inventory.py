@@ -531,9 +531,9 @@ class InventoryModule(BaseInventoryPlugin):
             raise AnsibleParserError(f"Failed to authenticate on ZPE Cloud. Error: {err}.")
 
         if organization:
-            result, msg = self._api_session.change_organization(organization)
-            if not result:
-                raise AnsibleParserError(f"Failed to switch organization. Error: {msg}.")
+            result, err = self._api_session.change_organization(organization)
+            if err:
+                raise AnsibleParserError(f"Failed to switch organization. Error: {err}.")
 
     def parse(self, inventory, loader, path, cache=True):
         super(InventoryModule, self).parse(inventory, loader, path)
