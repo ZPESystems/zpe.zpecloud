@@ -1,4 +1,4 @@
-# Ansible Collection - zpe.nodegrid
+# Ansible Collection - zpe.zpecloud
 
 Documentation for the collection.
 
