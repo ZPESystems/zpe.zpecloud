@@ -552,6 +552,7 @@ class InventoryModule(BaseInventoryPlugin):
         self._read_config_data(path)
 
         # get credentials from file and create an API session to ZPE Cloud
+        self.display.v("Authenticating on ZPE Cloud ...")
         self._create_api_session()
 
         # create default groups
@@ -562,13 +563,17 @@ class InventoryModule(BaseInventoryPlugin):
         self.inventory.add_group(ZPECloudDefaultGroups.DEVICE_FAILOVER)
 
         # create groups based on ZPE Cloud groups
+        self.display.v("Fetching groups from ZPE Cloud and creating Ansible groups ...")
         zpecloud_groups = self._parse_groups()
 
         # create groups based on ZPE Cloud sites
+        self.display.v("Fetching sites from ZPE Cloud and creating Ansible groups ...")
         zpecloud_sites = self._parse_sites()
 
         # fetch devices from ZPE Cloud and populate hosts
+        self.display.v("Fetching Nodegrid devices from ZPE Cloud and creating Ansible hosts ...")
         zpecloud_devices = self._parse_devices(zpecloud_groups, zpecloud_sites)
 
         # fetch custom fields from ZPE Cloud
+        self.display.v("Fetching custom fields devices from ZPE Cloud and creating Ansible variables ...")
         self._parse_custom_fields(zpecloud_devices)
