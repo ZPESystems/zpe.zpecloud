@@ -56,6 +56,7 @@ options:
   organization:
     description:
       - Organization name inside ZPE Cloud. Used to switch organization if user has accounts in multiple organizations.
+      - This field is case sensitive.
     type: string
     env:
       - name: ZPECLOUD_ORGANIZATION
