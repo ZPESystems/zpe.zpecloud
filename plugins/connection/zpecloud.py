@@ -16,12 +16,16 @@ description:
   - This plugin performs the following.
 author:
   - Daniel Nesvera (@zpe-dnesvera)
+requirements:
+  - requests
 options:
   url:
     description:
       - URL of ZPE Cloud instance.
     default: "https://zpecloud.com"
     type: string
+    vars:
+      - name: ansible_zpecloud_url
     env:
       - name: ZPECLOUD_URL
   username:
@@ -30,6 +34,8 @@ options:
       - Required for authentication with username and password.
     required: true
     type: string
+    vars:
+      - name: ansible_zpecloud_username
     env:
       - name: ZPECLOUD_USERNAME
   password:
@@ -38,6 +44,8 @@ options:
       - Required for authentication with username and password.
     type: string
     required: true
+    vars:
+      - name: ansible_zpecloud_password
     env:
       - name: ZPECLOUD_PASSWORD
   organization:
@@ -45,10 +53,10 @@ options:
       - Organization name inside ZPE Cloud. Used to switch organization if user has accounts in multiple organizations.
       - This field is case sensitive.
     type: string
+    vars:
+      - name: ansible_zpecloud_organization
     env:
       - name: ZPECLOUD_ORGANIZATION
-requirements:
-  - requests
 """
 
 EXAMPLES = r"""
@@ -101,41 +109,87 @@ import json
 import uuid
 import time
 from datetime import datetime, timedelta
+from typing import Tuple, Union
+from io import StringIO
+
+from ansible.errors import AnsibleConnectionFailure, AnsibleError
 
 from ansible_collections.zpe.zpecloud.plugins.plugin_utils.zpecloud_api import ZPECloudAPI
+from ansible_collections.zpe.zpecloud.plugins.plugin_utils.jinja_templates import (
+    render_exec_command
+)
 
 display = Display()
 
 class Connection(ConnectionBase):
-    ''' custom connections '''
+    """Plugin for connecting to Nodegrid device over ZPE CLOUD API"""
 
-    transport = 'custom_connection_for_me'
+    transport = 'zpe.zpecloud.zpecloud'
+    has_pipelining = True
+    # TODO - what this means?
 
-    # zpe cloud methods
-    def authenticate(self):
-        display.v("------> 2 _connect")
-        ##do Rest API call for authentication
-        self.zpe_cloud_session = requests.Session()
 
-        # authentication
-        # test
-        payload = {
-            "email": "user",
-            "password": "pass"
+    def _create_api_session(self) -> None:
+        url = self.get_option("url", None) or os.environ.get("ZPECLOUD_URL", None)
+
+        # default for url
+        if url is None:
+            url = "https://zpecloud.com"
+
+        display.v(f"----> url: {url}")
+
+        username = self.get_option("username", None) or os.environ.get("ZPECLOUD_USERNAME", None)
+        if username is None:
+            raise AnsibleConnectionFailure("Could not retrieve ZPE Cloud username from plugin configuration or environment.")
+
+        display.v(f"---> username: {username}")
+
+        password = self.get_option("password", None) or os.environ.get("ZPECLOUD_PASSWORD", None)
+        if password is None:
+            raise AnsibleConnectionFailure("Could not retrieve ZPE Cloud password from plugin configuration or environment.")
+
+        display.v(f"---> password: {password}")
+
+        organization = self.get_option("organization", None) or os.environ.get("ZPECLOUD_ORGANIZATION", None)
+
+        display.v(f"----> organization: {organization}")
+
+        try:
+            self._api_session = ZPECloudAPI(url)
+        except Exception as err:
+            raise AnsibleConnectionFailure(f"Failed to authenticate on ZPE Cloud. Error: {err}.")
+
+        result, err = self._api_session.authenticate_with_password(username, password)
+        if err:
+            raise AnsibleConnectionFailure(f"Failed to authenticate on ZPE Cloud. Error: {err}.")
+
+        if organization:
+            result, err = self._api_session.change_organization(organization)
+            if err:
+                raise AnsibleConnectionFailure(f"Failed to switch organization. Error: {err}.")
+
+    def _wrapper_exec_command(self, cmd: str) -> Union[Tuple[str, None], Tuple[None, str]]:
+        context = {
+            "command": cmd
         }
 
-        r = self.zpe_cloud_session.post(f"{self.url}/user/auth", data=payload)
-        display.v(f"------ _connect - Auth: {r.status_code}")
-        pass
+        try:
+            profile_content = render_exec_command(context)
+        except Exception as err:
+            #raise AnsibleConnectionFailure(f"Failed to execute command. Error: {err}")
+            return None, f"Failed to execute command. Error: {err}"
 
-    def create_profile(self, file_path):
-        self.profile_name = f"ansible_{uuid.uuid4()}"
-        profile_filename = f"{self.profile_name}.sh"
+        return profile_content, None
+
+    def _create_profile(self, profile_content: str) -> Union[Tuple[str, None], Tuple[None, str]]:
+        profile_name = f"ansible_{uuid.uuid4()}"
         display.v(f"Creating profile: {self.profile_name}")
 
-        with open(file_path, "rb") as f:
+        error = None
+        try:
+            f = StringIO(profile_content)
             payload_file=(
-                ("name", (None, self.profile_name)),
+                ("name", (None, profile_name)),
                 ("description", (None, "blah")),
                 ("type", (None, "SCRIPT")),
                 ("default", (None, "false")),
@@ -145,15 +199,31 @@ class Connection(ConnectionBase):
                 ("is_custom_command_enabled", (None, "false")),
                 ("language", (None, "SHELL")),
                 ("dynamic", (None, "false")),
-                ("file", (self.profile_name, f))
-            )
-            r = self.zpe_cloud_session.post(f"{self.url}/profile", files=payload_file)
+                ("file", (self.profile_name, f)))
+
+            response = self.zpe_cloud_session.post(f"{self.url}/profile", files=payload_file)
+        except Exception as err:
+            error = f"Failed to create script profile in ZPE Cloud. Error: {err}"
+        finally:
+            if f:
+                f.close()
+
+        if error:
+            return None, error
 
         display.v("===================")
-        display.v(f"---> create_profile: {r.status_code}")
-        display.v(str(vars(r)))
-        resp=json.loads(r.text)
-        self.profile_id=resp.get("id")
+        display.v(f"---> create_profile: {response.status_code}")
+        #display.v(str(vars(response)))
+
+        if response.status_code is not "200":
+            return None, f"Request to create script profile failed. Error: {response.text}"
+
+        profile_id = json.loads(response.text).get("id", None)
+
+        if profile_id is None:
+            return None, "Failed to retrieve ID from script profile."
+
+        return response.get("id"), None
 
     def apply_profile(self):
         device_id="4741"
@@ -219,32 +289,46 @@ class Connection(ConnectionBase):
 
             time.sleep(10)
 
-
-    # external methods
     def __init__(self, *args, **kwargs):
         super(Connection, self).__init__(*args, **kwargs)
-        display.v("------> 1__init__")
-        display.v("------> self content: ")
-        display.v(str(vars(self._play_context)))
-
-        self.host = self._play_context.remote_addr
-        display.v(f"------> host: {self.host}")
-        self.zpe_cloud_session = None
-        self.profile_id = None
-        self.profile_name = None
-        self.url = "https://api.test-zpecloud.com"
-        self.authenticate()
+        display.v("------> _connect")
+        self._api_session = None
 
     def _connect(self):
+        display.v("------> _connect")
+        # check if session already exists
+        if self._api_session is None:
+            self._create_api_session()
         return self
 
     def exec_command(self, cmd, in_data=None, sudoable=True):
         super(Connection, self).exec_command(cmd, in_data=in_data, sudoable=sudoable)
-        display.v("------> 3 exec_command")
+        display.v("------> exec_command")
+        display.v("Command")
+        display.v(f"{cmd}")
+        display.v(f"{type(cmd)}")
+        display.v("indata")
+        display.v(f"{in_data}")
+        display.v(f"{type(in_data)}")
+        display.v("Sudowable")
+        display.v(f"{sudoable}")
+        profile_content, err = self._wrapper_exec_command(cmd)
+        if err:
+            return(1, b'', b'')
+
+        display.v("Profile content")
+        display.v(profile_content)
+
+        # TODO - test wrapped profile
+        #id, err = self._create_profile(profile_content)
+        # TODO - test send it to cloud
+
+
+
+
+        return(0, b'', b'')
         ##do Rest API call for execute command
 
-        display.v("-----> exec_command - cmd: ")
-        display.v(cmd)
 
         if "~ansible" in cmd:
             return(0, b'/home/ansible\n', b'')
@@ -281,7 +365,8 @@ class Connection(ConnectionBase):
 
     def put_file(self, in_path, out_path):
         super(Connection, self).put_file(in_path, out_path)
-        display.v("------> 4 put_file")
+        display.v("------> put_file")
+        return
         ##do Rest API call for upload file
         display.v("------> in path: ")
         display.v(in_path)
@@ -289,12 +374,28 @@ class Connection(ConnectionBase):
         display.v(out_path)
         self.create_profile(in_path)
         pass
+        """transfer a file from local to remote"""
+
+        #super().put_file(in_path, out_path)
+
+        #self._vvv(f"PUT {in_path} TO {out_path}")
+        #if not os.path.exists(to_bytes(in_path, errors="surrogate_or_strict")):
+        #    raise AnsibleFileNotFound(f"file or module does not exist: {in_path}")
+
+        #return self._file_transport_command(in_path, out_path, "put")
 
     def fetch_file(self, in_path, out_path):
         super(Connection, self).fetch_file(in_path, out_path)
         display.v("------> 5 fetch_file")
         ##do Rest API call for download file
         pass
+
+        #"""fetch a file from remote to local"""
+
+        #super().fetch_file(in_path, out_path)
+
+        #self._vvv(f"FETCH {in_path} TO {out_path}")
+        #return self._file_transport_command(in_path, out_path, "get")
 
     def close(self):
         display.v("------> 6 close")
@@ -304,5 +405,6 @@ class Connection(ConnectionBase):
     def reset(self):
         """Reset the connection."""
         display.v("------> 7 reset")
+        return
         self.close()
         self._connect()
