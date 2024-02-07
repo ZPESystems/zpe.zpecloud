@@ -11,6 +11,7 @@ __metaclass__ = type
 import json
 from typing import List, Dict, Union, Tuple
 from urllib.parse import urlparse
+from datetime import datetime
 
 try:
     import requests
@@ -54,6 +55,14 @@ class ZPECloudAPI:
         r = self._zpe_cloud_session.get(url=url, timeout=self.timeout, headers=headers)
 
         if r.status_code == 200:
+            return r.text, None
+        else:
+            return "", r.reason
+
+    def _upload_file(self, url: str, files: Tuple) -> Union[Tuple[str, str], Tuple[str, None]]:
+        r = self._zpe_cloud_session.post(url=url, files=files, timeout=self.timeout)
+
+        if r.status_code == 201:
             return r.text, None
         else:
             return "", r.reason
@@ -204,3 +213,28 @@ class ZPECloudAPI:
                 break
 
         return custom_fields, None
+
+    def create_profile(self, files: Tuple) -> Union[Tuple[Dict, None], Tuple[None, str]]:
+        content, err = self._upload_file(url=f"{self._url}/profile", files=files)
+
+        if err:
+            return None, err
+
+        content = json.loads(content)
+
+        return content, None
+
+    def apply_profile(self, device_id: str, profile_id: str) -> Union[Tuple[Dict, None], Tuple[None, str]]:
+        schedule = datetime.utcnow() # + timedelta(seconds=10)
+        payload = {
+            "schedule": schedule.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            "is_first_connection": "false"
+        }
+
+        content, err = self._post(url=f"{self._url}/profile/{profile_id}/device/{device_id}", data=payload, headers={})
+
+        if err:
+            return None, err
+
+        return content, None
+

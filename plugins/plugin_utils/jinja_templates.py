@@ -18,6 +18,7 @@ EXEC_COMMAND_TEMPLATE = """\
 #!/bin/bash
 
 {{ command }}
+
 """
 
 PUT_FILE_TEMPLATE = """"\
@@ -53,12 +54,14 @@ if __name__ == "__main__":
 
     # unzip file
     unzip_file(zip_enc_file_path, dst_dir)
+
 """
 
 FETCH_FILE_TEMPALTE = """"\
 #!/bin/bash
 
 {{ command }}
+
 """
 
 def _render_template(template: str, context: Dict) -> str:
