@@ -390,6 +390,10 @@ class InventoryModule(BaseInventoryPlugin):
         if len(device_list) == 0:
             AnsibleParserError("No device found in ZPE Cloud.")
 
+        discarded_count = len(available_devices) + len(enrolled_devices) - len(device_list)
+        if discarded_count > 0:
+            self.display.warning(f"{discarded_count} Nodegrid devices were discarded due required fields missing. ")
+
         # Devices are mapped to sites, and groups, by its IDs but name is required to store inside inventory
         # Create a lookup table for sites, and groups, mapping id to names
         group_lookup = {}
@@ -429,11 +433,15 @@ class InventoryModule(BaseInventoryPlugin):
 
             # assign device to ZPE Cloud sites
             if device.site_id:
-                self.inventory.add_child(site_lookup.get(device.site_id), host_id)
+                group_n = site_lookup.get(device.site_id, None)
+                if group_n:
+                    self.inventory.add_child(group_n, host_id)
 
             # assign device to ZPE Cloud groups
             for group_id in device.group_ids:
-                self.inventory.add_child(group_lookup.get(group_id), host_id)
+                group_n = group_lookup.get(group_id, None)
+                if group_n:
+                    self.inventory.add_child(group_n, host_id)
 
         return device_list
 

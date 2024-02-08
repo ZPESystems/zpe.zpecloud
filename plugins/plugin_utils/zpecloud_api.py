@@ -25,8 +25,8 @@ class MissingDependencyError(Exception):
 
 
 class ZPECloudAPI:
-    timeout = 60
-    query_limit = 100000
+    timeout = 100
+    query_limit = 50
 
     def __init__(self, url: str) -> None:
         if not HAS_REQUESTS:
@@ -102,47 +102,83 @@ class ZPECloudAPI:
 
         return True, None
 
-    def get_available_devices(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
-        content, err = self._get(url=f"{self._url}/device?enrolled=0&limit={self.query_limit}",
-                                 headers={"Content-Type": "application/json"})
-        if err:
-            return None, err
+    def _get_devices(self, enrolled: bool = True) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
+        if enrolled:
+            enroll_param = "&enrolled=1"
+        else:
+            enroll_param = "&enrolled=0"
 
-        devices = json.loads(content)
-        devices = devices.get("list")
+        devices = []
+        while True:
+            offset_url = f"{self._url}/device?{enroll_param}&offset={len(devices)}&limit={self.query_limit}"
+            content, err = self._get(url=offset_url, headers={"Content-Type": "application/json"})
+            if err:
+                return None, err
+
+            content = json.loads(content)
+            device_count = content.get("count", None)
+            if device_count is None:
+                return None, "Failed to retrieve device count."
+
+            device_list = content.get("list", None)
+            if device_list is None:
+                return None, "Failed to retrieve device list."
+
+            devices += device_list
+            if len(devices) >= device_count:
+                break
 
         return devices, None
+
+    def get_available_devices(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
+        return self._get_devices(enrolled=False)
 
     def get_enrolled_devices(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
-        content, err = self._get(url=f"{self._url}/device?enrolled=1&limit={self.query_limit}",
-                                 headers={"Content-Type": "application/json"})
-        if err:
-            return None, err
-
-        devices = json.loads(content)
-        devices = devices.get("list")
-
-        return devices, None
+        return self._get_devices(enrolled=True)
 
     def get_groups(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
-        content, err = self._get(url=f"{self._url}/group?limit={self.query_limit}",
-                                 headers={"Content-Type": "application/json"})
-        if err:
-            return None, err
+        groups = []
+        while True:
+            offset_url = f"{self._url}/group?offset={len(groups)}&limit={self.query_limit}"
+            content, err = self._get(url=offset_url, headers={"Content-Type": "application/json"})
+            if err:
+                return None, err
 
-        groups = json.loads(content)
-        groups = groups.get("list")
+            content = json.loads(content)
+            group_count = content.get("count", None)
+            if group_count is None:
+                return None, "Failed to retrieve group count."
+
+            group_list = content.get("list", None)
+            if group_list is None:
+                return None, "Failed to retrieve group list."
+
+            groups += group_list
+            if len(groups) >= group_count:
+                break
 
         return groups, None
 
     def get_sites(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
-        content, err = self._get(url=f"{self._url}/site?limit={self.query_limit}",
-                                 headers={"Content-Type": "application/json"})
-        if err:
-            return None, err
+        sites = []
+        while True:
+            offset_url = f"{self._url}/site?offset={len(sites)}&limit={self.query_limit}"
+            content, err = self._get(url=offset_url, headers={"Content-Type": "application/json"})
+            if err:
+                return None, err
 
-        sites = json.loads(content)
-        sites = sites.get("list")
+            content = json.loads(content)
+            site_count = content.get("count", None)
+            if site_count is None:
+                return None, "Failed to retrieve site count."
+
+            site_list = content.get("list", None)
+            if site_list is None:
+                return None, "Failed to retrieve group list."
+
+            sites += site_list
+            if len(sites) >= site_count:
+                break
 
         return sites, None
 
