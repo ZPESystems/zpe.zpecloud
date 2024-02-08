@@ -25,7 +25,8 @@ class MissingDependencyError(Exception):
 
 
 class ZPECloudAPI:
-    timeout = 30
+    timeout = 60
+    query_limit = 100000
 
     def __init__(self, url: str) -> None:
         if not HAS_REQUESTS:
@@ -102,7 +103,7 @@ class ZPECloudAPI:
         return True, None
 
     def get_available_devices(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
-        content, err = self._get(url=f"{self._url}/device?enrolled=0",
+        content, err = self._get(url=f"{self._url}/device?enrolled=0&limit={self.query_limit}",
                                  headers={"Content-Type": "application/json"})
         if err:
             return None, err
@@ -113,7 +114,7 @@ class ZPECloudAPI:
         return devices, None
 
     def get_enrolled_devices(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
-        content, err = self._get(url=f"{self._url}/device?enrolled=1",
+        content, err = self._get(url=f"{self._url}/device?enrolled=1&limit={self.query_limit}",
                                  headers={"Content-Type": "application/json"})
         if err:
             return None, err
@@ -124,7 +125,7 @@ class ZPECloudAPI:
         return devices, None
 
     def get_groups(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
-        content, err = self._get(url=f"{self._url}/group",
+        content, err = self._get(url=f"{self._url}/group?limit={self.query_limit}",
                                  headers={"Content-Type": "application/json"})
         if err:
             return None, err
@@ -135,7 +136,7 @@ class ZPECloudAPI:
         return groups, None
 
     def get_sites(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
-        content, err = self._get(url=f"{self._url}/site",
+        content, err = self._get(url=f"{self._url}/site?limit={self.query_limit}",
                                  headers={"Content-Type": "application/json"})
         if err:
             return None, err
@@ -146,7 +147,7 @@ class ZPECloudAPI:
         return sites, None
 
     def get_custom_fields(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
-        content, err = self._get(url=f"{self._url}/template-custom-field?limit=10000",
+        content, err = self._get(url=f"{self._url}/template-custom-field?limit={self.query_limit}",
                                  headers={"Content-Type": "application/json"})
         if err:
             return None, err
