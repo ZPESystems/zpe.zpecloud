@@ -183,12 +183,24 @@ class ZPECloudAPI:
         return sites, None
 
     def get_custom_fields(self) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
-        content, err = self._get(url=f"{self._url}/template-custom-field?limit={self.query_limit}",
-                                 headers={"Content-Type": "application/json"})
-        if err:
-            return None, err
+        custom_fields = []
+        while True:
+            offset_url = f"{self._url}/template-custom-field?offset={len(custom_fields)}&limit={self.query_limit}"
+            content, err = self._get(url=offset_url, headers={"Content-Type": "application/json"})
+            if err:
+                return None, err
 
-        custom_fields = json.loads(content)
-        custom_fields = custom_fields.get("list")
+            content = json.loads(content)
+            cf_count = content.get("count", None)
+            if cf_count is None:
+                return None, "Failed to retrieve custom field count."
+
+            cf_list = content.get("list", None)
+            if cf_list is None:
+                return None, "Failed to retrieve custom field list."
+
+            custom_fields += cf_list
+            if len(custom_fields) >= cf_count:
+                break
 
         return custom_fields, None
