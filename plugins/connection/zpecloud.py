@@ -120,6 +120,15 @@ from ansible_collections.zpe.zpecloud.plugins.plugin_utils.jinja_templates impor
     render_exec_command
 )
 
+from ansible_collections.zpe.zpecloud.plugins.plugin_utils.utils import (
+    read_file,
+    write_file,
+    encode_data,
+    decode_data,
+    zip_data,
+    unzip_data
+)
+
 display = Display()
 
 class Connection(ConnectionBase):
@@ -256,15 +265,17 @@ class Connection(ConnectionBase):
     def _wait_job_to_finish(self, job_id: str) -> Union[Tuple[str, None], Tuple[None, str]]:
         # Check job execution
         display.v(f"Checking job status for {job_id}")
-        operation_url=f"{self.url}/job/{job_id}/details?jobId={job_id}"
 
+        # TODO - add a timeout for waiting finish
         while True:
-            r = self.zpe_cloud_session.get(operation_url)
-            resp=json.loads(r.text)
+            content, err = self._api_session.get_job(job_id)
+            if err:
+                return None, f"Failed to get status for job {job_id}. Err: {err}"
 
-            operation_config_name=resp.get("operation",{}).get("configurationName")
-            operation_status=resp.get("operation",{}).get("status")
-            operation_output_file_url=resp.get("output_file", None)
+            content = json.loads(content)
+            operation_config_name = content.get("operation",{}).get("configurationName")
+            operation_status = content.get("operation",{}).get("status")
+            operation_output_file_url = content.get("output_file", None)
 
             display.v(f"Operation name: {operation_config_name}")
             display.v(f"Operation status: {operation_status}")
@@ -275,14 +286,51 @@ class Connection(ConnectionBase):
                 r = requests.get(operation_output_file_url)
 
                 display.v(str(r.content))
-                return r.content
+                return r.content, None
 
-            elif operation_status == "Failed":
+            elif operation_status == "Failed" or operation_status == "Cancelled" or operation_status == "Timeout":
                 display.v(f"Job failed")
-                break
+                return None, f"Job {job_id} finished with status {operation_status}."
 
             time.sleep(10)
 
+    def _wrapper_put_file(self, in_path: str, out_path: str) -> Union[Tuple[str, None], Tuple[None, str]]:
+        file_content, err = read_file(in_path)
+        if err:
+            return None, err
+
+        display.v("=============== File read")
+        display.v(file_content)
+
+        file_content, err = zip_data(file_content)
+        if err:
+            return None, err
+
+        display.v("=============== File zip")
+        display.v(file_content)
+
+        file_content, err = encode_data(file_content)
+        if err:
+            return None, err
+
+        display.v("=============== File encode")
+        display.v(file_content)
+
+
+        context = {
+            "content": file_content,
+            "out_path": out_path
+        }
+
+        profile_content, err = render_exec_command(context)
+        if err:
+            return None, err
+
+        return profile_content, None
+
+    def _exec_put_file(self, in_path: str, out_path: str) -> Union[Tuple[str, None], Tuple[None, str]]:
+        """Create script profile to send a file from local to host."""
+        pass
 
     def _connect(self):
         display.v("------> _connect")
@@ -320,9 +368,11 @@ class Connection(ConnectionBase):
         display.v(f">>>> job_id: {job_id}")
 
         # wait profile to finish
-        #self._wait_job_to_finish(job_id)
+        job_output, err = self._wait_job_to_finish(job_id)
+        if err:
+            return(1, b'', b'')
 
-        return(0, b'', b'')
+        return(0, job_output, b'')
         ##do Rest API call for execute command
 
 
@@ -360,38 +410,51 @@ class Connection(ConnectionBase):
             return (0, b'', b'')
 
     def put_file(self, in_path, out_path):
+        """transfer a file from local to remote"""
         super(Connection, self).put_file(in_path, out_path)
         display.v("------> put_file")
-        return
-        ##do Rest API call for upload file
         display.v("------> in path: ")
         display.v(in_path)
         display.v("------> out path: ")
         display.v(out_path)
-        self.create_profile(in_path)
-        pass
-        """transfer a file from local to remote"""
 
-        #super().put_file(in_path, out_path)
+        if not os.path.exists(to_bytes(in_path, errors="surrogate_or_strict")):
+            raise AnsibleFileNotFound(f"File or module does not exist - {in_path}")
 
-        #self._vvv(f"PUT {in_path} TO {out_path}")
-        #if not os.path.exists(to_bytes(in_path, errors="surrogate_or_strict")):
-        #    raise AnsibleFileNotFound(f"file or module does not exist: {in_path}")
+        profile_content, err = self._wrapper_put_file(in_path, out_path)
+        if err:
+            raise AnsibleError("Failed to create script profile to send file to device.")
 
-        #return self._file_transport_command(in_path, out_path, "put")
+        display.v(">>>>>>>>>>>> profile content")
+        display.v(profile_content)
+
+        # TODO - test wrapped profile
+        profile_id, err = self._create_profile(profile_content)
+        # TODO - test send it to cloud
+
+        if err:
+            raise AnsibleError("File transfer failed.")
+
+        display.v(f"profile ID: {profile_id}")
+
+        job_id, err = self._apply_profile(self.host_zpecloud_id, profile_id)
+
+        display.v(f">>>> job_id: {job_id}")
+
+        # wait profile to finish
+        job_output, err = self._wait_job_to_finish(job_id)
+        if err:
+            raise AnsibleError("File transfer failed.")
 
     def fetch_file(self, in_path, out_path):
         super(Connection, self).fetch_file(in_path, out_path)
         display.v("------> 5 fetch_file")
-        ##do Rest API call for download file
+        display.v("------> in path: ")
+        display.v(in_path)
+        display.v("------> out path: ")
+        display.v(out_path)
         pass
-
-        #"""fetch a file from remote to local"""
-
-        #super().fetch_file(in_path, out_path)
-
-        #self._vvv(f"FETCH {in_path} TO {out_path}")
-        #return self._file_transport_command(in_path, out_path, "get")
+        #return self._file_transport(in_path, out_path, "get")
 
     def close(self):
         display.v("------> 6 close")

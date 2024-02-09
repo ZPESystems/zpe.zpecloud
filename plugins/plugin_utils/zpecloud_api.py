@@ -238,3 +238,10 @@ class ZPECloudAPI:
 
         return content, None
 
+    def get_job(self, job_id: str) -> Union[Tuple[Dict, None], Tuple[None, str]]:
+        content, err = self._get(url=f"{self._url}/job/{job_id}/details?jobId={job_id}", headers={})
+
+        if err:
+            return None, err
+
+        return content, None
