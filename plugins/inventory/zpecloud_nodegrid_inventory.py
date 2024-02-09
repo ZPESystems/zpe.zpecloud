@@ -433,9 +433,9 @@ class InventoryModule(BaseInventoryPlugin):
 
             # assign device to ZPE Cloud sites
             if device.site_id:
-                group_n = site_lookup.get(device.site_id, None)
-                if group_n:
-                    self.inventory.add_child(group_n, host_id)
+                site_n = site_lookup.get(device.site_id, None)
+                if site_n:
+                    self.inventory.add_child(site_n, host_id)
 
             # assign device to ZPE Cloud groups
             for group_id in device.group_ids:
