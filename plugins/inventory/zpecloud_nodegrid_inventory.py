@@ -24,6 +24,9 @@ description:
   - If multiple custom fields share the same name, inventory variable will receive the value of the scope with higher priority.
   - Device scope has higher priority, and global scope the lower.
   - It requires a YAML configuration file with name "zpecloud.yml".
+notes:
+  - Ansible groups names, and variables, can only include letters, numbers, and underscores. Invalid characters will be replaced by underscore.
+  - If you have a ZPE Cloud site named "My site-1", it will appear on the inventory as zpecloud_site_my_site_1. The same happens for groups, and custom fields.
 author:
   - Daniel Nesvera (@zpe-dnesvera)
 options:
@@ -390,6 +393,10 @@ class InventoryModule(BaseInventoryPlugin):
         if len(device_list) == 0:
             AnsibleParserError("No device found in ZPE Cloud.")
 
+        discarded_count = len(available_devices) + len(enrolled_devices) - len(device_list)
+        if discarded_count > 0:
+            self.display.warning(f"{discarded_count} Nodegrid devices were discarded due required fields missing. ")
+
         # Devices are mapped to sites, and groups, by its IDs but name is required to store inside inventory
         # Create a lookup table for sites, and groups, mapping id to names
         group_lookup = {}
@@ -429,11 +436,15 @@ class InventoryModule(BaseInventoryPlugin):
 
             # assign device to ZPE Cloud sites
             if device.site_id:
-                self.inventory.add_child(site_lookup.get(device.site_id), host_id)
+                site_n = site_lookup.get(device.site_id, None)
+                if site_n:
+                    self.inventory.add_child(site_n, host_id)
 
             # assign device to ZPE Cloud groups
             for group_id in device.group_ids:
-                self.inventory.add_child(group_lookup.get(group_id), host_id)
+                group_n = group_lookup.get(group_id, None)
+                if group_n:
+                    self.inventory.add_child(group_n, host_id)
 
         return device_list
 
