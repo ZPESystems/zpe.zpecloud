@@ -24,6 +24,9 @@ description:
   - If multiple custom fields share the same name, inventory variable will receive the value of the scope with higher priority.
   - Device scope has higher priority, and global scope the lower.
   - It requires a YAML configuration file with name "zpecloud.yml".
+notes:
+  - Ansible groups names, and variables, can only include letters, numbers, and underscores. Invalid characters will be replaced by underscore.
+  - If you have a ZPE Cloud site named "My site-1", it will appear on the inventory as zpecloud_site_my_site_1. The same happens for groups, and custom fields.
 author:
   - Daniel Nesvera (@zpe-dnesvera)
 options:
