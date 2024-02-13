@@ -13,7 +13,8 @@ DOCUMENTATION = r"""
 name: zpecloud
 short_description: This connection plugin allows Ansible to execute tasks on Nodegrid devices via ZPE Cloud API.
 description:
-  - This plugin performs the following.
+  - Run commands or put/fetch files to Nodegrid device enrolled on ZPE Cloud.
+  - Uses python requests library to interact with ZPE Cloud API.
 author:
   - Daniel Nesvera (@zpe-dnesvera)
 requirements:
@@ -60,20 +61,20 @@ options:
 """
 
 EXAMPLES = r"""
-# example vars.yml
----
-ansible_connection: zpecloud
-ansible_zpecloud_url: https://zpecloud.com
-ansible_zpecloud_username: myuser@myemail.com
-ansible_zpecloud_password: mysecurepassword
-ansible_zpecloud_organization: "My oganization"
-
 # example playbook_nodegrid.yml
 ---
-- name: Test ZPE Cloud Connection Plugin for Nodegrid device
+- name: Get uptime from Nodegrid device
+  vars:
+    ansible_connection: zpe.zpecloud.zpecloud
+    ansible_zpecloud_username: myuser@mycompany.com
+    ansible_zpecloud_password: mysecurepassword
+    ansible_zpecloud_url: "https://zpecloud.com"
+    ansible_zpecloud_organization: "My second organization"
   hosts: zpecloud_device_online
+  gather_facts: no
   tasks:
-    - command: whoami
+  - name: Shell command
+    shell: uptime -p
 """
 
 import json
@@ -230,7 +231,7 @@ class Connection(ConnectionBase):
 
     def _delete_profile(self, profile_id: str) -> None:
         """ """
-        _, err = self._api_session.delete_profile(profile_id)
+        err = self._api_session.delete_profile(profile_id)[1]
         if err:
             display.warning(f"Failed to delete profile from ZPE Cloud. ID: {profile_id}. Error: {err}.")
 
@@ -277,7 +278,7 @@ class Connection(ConnectionBase):
                 r = requests.get(operation_output_file_url)
                 return None, r.content
 
-            time.sleep(10)
+            time.sleep(1)
 
         # TODO - timeout
         raise AnsibleError(f"Timeout waiting feedback for job {job_id}.")
@@ -397,7 +398,7 @@ class Connection(ConnectionBase):
         job_id = self._apply_profile(self.host_zpecloud_id, profile_id)
 
         # Wait profile to finish
-        _, err = self._wait_job_to_finish(job_id)
+        err = self._wait_job_to_finish(job_id)[1]
         if err:
             raise AnsibleError(f"File transfer failed. Error: {err}.")
 
@@ -435,16 +436,15 @@ class Connection(ConnectionBase):
         file_content = self._process_fetch_file(job_output)
 
         # write file to local
-        _, err = write_file(out_path, file_content)
+        err = write_file(out_path, file_content)[1]
         if err:
             raise AnsibleError(f"Failed to save file. Error: {err}.")
-
 
     def close(self):
         """  """
         display.vvvv("[zpecloud connection - close override]")
         if self._api_session:
-            _, err = self._api_session.logout()
+            err = self._api_session.logout()[1]
             if err:
                 display.warning("Failed to close session from ZPE Cloud. Error: {err}.")
         pass

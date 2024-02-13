@@ -69,13 +69,13 @@ EXAMPLES = r"""
 
 # Sample configuration file for dynamic inventory based on ZPE Cloud. The authentication here is based on user and password.
 plugin: zpe.zpecloud.zpecloud_nodegrid_inventory
-url: https://api.test-zpecloud.com
+url: https://zpecloud.com
 username: myuser@mycompany.com
 password: mysecurepassword
 
 # Sample configuration file for dynamic inventory based on ZPE Cloud. It will authenticate and switch to second company.
 plugin: zpe.zpecloud.zpecloud_nodegrid_inventory
-url: https://api.test-zpecloud.com
+url: https://zpecloud.com
 username: myuser@mycompany.com
 password: mysecurepassword
 organization: "My second organization"

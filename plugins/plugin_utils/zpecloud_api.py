@@ -120,7 +120,7 @@ class ZPECloudAPI:
         return True, None
 
     def logout(self) -> Union[Tuple[bool, str], Tuple[bool, None]]:
-        _, err = self._post(url=f"{self._url}/user/logout", data={}, headers={})
+        err = self._post(url=f"{self._url}/user/logout", data={}, headers={})[1]
         if err:
             return False, err
 
@@ -240,7 +240,7 @@ class ZPECloudAPI:
         return content, None
 
     def delete_profile(self, profile_id: str) -> Union[Tuple[Dict, None], Tuple[None, str]]:
-        _, err = self._delete(url=f"{self._url}/profile/{profile_id}", headers={})
+        err = self._delete(url=f"{self._url}/profile/{profile_id}", headers={})[1]
         if err:
             return None, err
 
