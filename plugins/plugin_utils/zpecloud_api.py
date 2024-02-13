@@ -59,6 +59,14 @@ class ZPECloudAPI:
         else:
             return "", r.reason
 
+    def _delete(self, url: str, headers: Dict) -> Union[Tuple[str, str], Tuple[str, None]]:
+        r = self._zpe_cloud_session.delete(url=url, timeout=self.timeout, headers=headers)
+
+        if r.status_code == 204:
+            return r.text, None
+        else:
+            return "", r.reason
+
     def _upload_file(self, url: str, files: Tuple) -> Union[Tuple[str, str], Tuple[str, None]]:
         r = self._zpe_cloud_session.post(url=url, files=files, timeout=self.timeout)
 
@@ -223,6 +231,14 @@ class ZPECloudAPI:
         content = json.loads(content)
 
         return content, None
+
+    def delete_profile(self, profile_id: str) -> Union[Tuple[Dict, None], Tuple[None, str]]:
+        _, err = self._delete(url=f"{self._url}/profile/{profile_id}", headers={})
+        if err:
+            return None, err
+
+        return "", None
+
 
     def apply_profile(self, device_id: str, profile_id: str) -> Union[Tuple[Dict, None], Tuple[None, str]]:
         schedule = datetime.utcnow() # + timedelta(seconds=10)

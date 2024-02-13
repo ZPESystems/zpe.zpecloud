@@ -11,13 +11,13 @@ __metaclass__ = type
 from typing import Union, Tuple
 import base64
 import zipfile
-from io import StringIO
+from io import StringIO, BytesIO
 
 
 
 def read_file(in_path: str) -> Union[Tuple[str, None], Tuple[None, str]]:
     try:
-        with open(in_path, "r") as f:
+        with open(in_path, "rb") as f:
             data = f.read()
         return data, None
     except Exception as err:
@@ -25,13 +25,14 @@ def read_file(in_path: str) -> Union[Tuple[str, None], Tuple[None, str]]:
 
 def write_file(out_path: str, data: str) -> Union[Tuple[bool, None], Tuple[None, str]]:
     try:
-        with open(out_path, "w") as f:
+        with open(out_path, "wb") as f:
             f.write(data)
         return True, None
     except Exception as err:
         return None, f"Failed to write file {out_path}. Error: {err}"
 
-def encode_data(data: str):
+# TODO - verify types
+def encode_base64(data: bytes) -> Union[Tuple[bytes, None], Tuple[None, str]]:
     try:
         enc_data = base64.b64encode(data)
 
@@ -41,7 +42,7 @@ def encode_data(data: str):
     return enc_data, None
 
 
-def decode_data(data: str):
+def decode_base64(data: bytes) -> Union[Tuple[bool, None], Tuple[None, str]]:
     try:
         dec_data = base64.b64decode(data)
     except Exception as err:
@@ -49,25 +50,22 @@ def decode_data(data: str):
 
     return dec_data, None
 
-def zip_data(data: str):
+def compress_data(data: str, filename: str) -> Union[Tuple[bool, None], Tuple[None, str]]:
     zipped_str = ""
-    io_data = BytesIO(data)
     mem_zip = BytesIO()
+    # TODO - get algorithm from flag zipfile.ZIP_DEFLATED and check which should be used based on user's computer
+    # TODO - validation for errors
     with zipfile.ZipFile(mem_zip, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("blah.txt", data)
-    #z = zipfile.ZipFile(zipped_data)
-    #z.write(io_data, compress_type=zipfile.ZIP_DEFLATED)
+        zf.writestr(filename, data)
     zipped_str = mem_zip.getvalue()
 
     return zipped_str, None
 
-
-def unzip_data(data: str):
-    blah = ""
+def extract_data(data: str, filename: str) -> Union[Tuple[bool, None], Tuple[None, str]]:
     mem_zip = BytesIO(data)
     mem_file = ""
     with  zipfile.ZipFile(mem_zip, mode="r", compression=zipfile.ZIP_DEFLATED) as zf:
-        with zf.open("blah.txt") as myfile:
+        with zf.open(filename) as myfile:
             mem_file = myfile.read()
 
-    return mem_file
+    return mem_file, None
