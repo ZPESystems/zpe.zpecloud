@@ -126,7 +126,6 @@ class ZPECloudAPI:
 
         return True, None
 
-
     def _get_devices(self, enrolled: bool = True) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
         if enrolled:
             enroll_param = "&enrolled=1"
@@ -247,9 +246,7 @@ class ZPECloudAPI:
 
         return "", None
 
-
-    def apply_profile(self, device_id: str, profile_id: str) -> Union[Tuple[Dict, None], Tuple[None, str]]:
-        schedule = datetime.utcnow() # + timedelta(seconds=10)
+    def apply_profile(self, device_id: str, profile_id: str, schedule: datetime) -> Union[Tuple[Dict, None], Tuple[None, str]]:
         payload = {
             "schedule": schedule.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
             "is_first_connection": "false"

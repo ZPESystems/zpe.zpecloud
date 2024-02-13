@@ -76,44 +76,34 @@ ansible_zpecloud_organization: "My oganization"
     - command: whoami
 """
 
-import errno
-import fcntl
-import hashlib
+import json
 import os
-import pty
-import re
-import subprocess
+import requests
 import time
+import uuid
 
-from functools import wraps
+
+from datetime import datetime
+from typing import Tuple, Union
+from io import StringIO
+
 from ansible import constants as C
 from ansible.errors import (
     AnsibleAuthenticationFailure,
     AnsibleConnectionFailure,
     AnsibleError,
     AnsibleFileNotFound,
+    AnsibleOptionsError
 )
-from ansible.errors import AnsibleOptionsError
 from ansible.compat import selectors
 from ansible.module_utils.six import PY3, text_type, binary_type
 from ansible.module_utils.six.moves import shlex_quote
-from ansible.module_utils._text import to_bytes, to_native, to_text
+from ansible.module_utils._text import to_bytes, to_text
 from ansible.module_utils.parsing.convert_bool import BOOLEANS, boolean
 from ansible.plugins.connection import ConnectionBase, BUFSIZE
 from ansible.plugins.shell.powershell import _parse_clixml
 from ansible.utils.display import Display
 from ansible.utils.path import unfrackpath, makedirs_safe
-
-import requests
-import json
-import uuid
-import time
-from datetime import datetime, timedelta
-from typing import Tuple, Union
-from io import StringIO
-
-from ansible.errors import AnsibleConnectionFailure, AnsibleError
-from ansible.module_utils.common.text.converters import to_bytes, to_native, to_text
 
 from ansible_collections.zpe.zpecloud.plugins.plugin_utils.zpecloud_api import ZPECloudAPI
 from ansible_collections.zpe.zpecloud.plugins.plugin_utils.jinja_templates import (
@@ -132,6 +122,7 @@ from ansible_collections.zpe.zpecloud.plugins.plugin_utils.utils import (
 )
 
 display = Display()
+
 
 class Connection(ConnectionBase):
     """Plugin for connecting to Nodegrid device over ZPE CLOUD API"""
@@ -155,7 +146,6 @@ class Connection(ConnectionBase):
         display.vvvv("[zpecloud connection - update_vars override]")
         self.host_serial_number = variables.get("serial_number", None)
         self.host_zpecloud_id = variables.get("zpecloud_id", None)
-
 
     def _create_api_session(self) -> None:
         """ """
@@ -207,7 +197,7 @@ class Connection(ConnectionBase):
         f = None
         try:
             f = StringIO(profile_content)
-            payload_file=(
+            payload_file = (
                 ("name", (None, profile_name)),
                 ("description", (None, description)),
                 ("type", (None, "SCRIPT")),
@@ -234,7 +224,7 @@ class Connection(ConnectionBase):
 
         profile_id = response.get("id", None)
         if profile_id is None:
-            raise AnsibleError(f"Failed to retrieve ID from script profile.")
+            raise AnsibleError("Failed to retrieve ID from script profile.")
 
         return response.get("id")
 
@@ -248,7 +238,8 @@ class Connection(ConnectionBase):
         """ """
         display.v(f"Applying profile {profile_id} to device: {device_id}.")
 
-        content, err = self._api_session.apply_profile(device_id, profile_id)
+        schedule = datetime.utcnow()
+        content, err = self._api_session.apply_profile(device_id, profile_id, schedule)
         if err:
             raise AnsibleError(f"Failed to apply script profile to device. Error: {err}")
         # TODO - show job uuid and serialnumber
@@ -269,8 +260,7 @@ class Connection(ConnectionBase):
                 raise AnsibleError(f"Failed to get status for job {job_id}. Err: {err}")
 
             content = json.loads(content)
-            operation_config_name = content.get("operation",{}).get("configurationName")
-            operation_status = content.get("operation",{}).get("status")
+            operation_status = content.get("operation", {}).get("status")
             operation_output_file_url = content.get("output_file", None)
 
             if operation_status == "Successful" and operation_output_file_url and len(operation_output_file_url) > 0:
@@ -317,7 +307,6 @@ class Connection(ConnectionBase):
 
         return file_content
 
-
     def _wrapper_put_file(self, file_content: str, out_path: str) -> Union[Tuple[str, None], Tuple[None, str]]:
         """ """
         profile_content, err = render_put_file(out_path, file_content, self.filename_inside_zip)
@@ -342,12 +331,12 @@ class Connection(ConnectionBase):
             self._create_api_session()
         return self
 
-    def exec_command(self, cmd: str, in_data: bytes=None, sudoable:bool=True):
+    def exec_command(self, cmd: str, in_data: bytes = None, sudoable: bool = True):
         """  """
         super(Connection, self).exec_command(cmd, in_data=in_data, sudoable=sudoable)
         display.vvvv("[zpecloud connection - exec_command override]")
 
-        cmd  = to_text(cmd)
+        cmd = to_text(cmd)
 
         # TODO - check if is possible to get the runner
         if "/bin/sh" in cmd:
@@ -369,11 +358,12 @@ class Connection(ConnectionBase):
         # Wait profile to finish
         job_output, err = self._wait_job_to_finish(job_id)
         if err:
-            return(1, b'', to_bytes(err))
+            return (1, b'', to_bytes(err))
 
-        #self._delete_profile(profile_id)
+        # Delete profile from configuration list
+        self._delete_profile(profile_id)
 
-        return(0, to_bytes(job_output), b'')
+        return (0, to_bytes(job_output), b'')
 
     def put_file(self, in_path, out_path):
         """transfer a file from local to remote"""
@@ -411,7 +401,8 @@ class Connection(ConnectionBase):
         if err:
             raise AnsibleError(f"File transfer failed. Error: {err}.")
 
-        #self._delete_profile(job_id)
+        # Delete profile from configuration list
+        self._delete_profile(job_id)
 
     def fetch_file(self, in_path, out_path):
         """ """

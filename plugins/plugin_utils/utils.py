@@ -11,8 +11,7 @@ __metaclass__ = type
 from typing import Union, Tuple
 import base64
 import zipfile
-from io import StringIO, BytesIO
-
+from io import BytesIO
 
 
 def read_file(in_path: str) -> Union[Tuple[str, None], Tuple[None, str]]:
@@ -24,6 +23,7 @@ def read_file(in_path: str) -> Union[Tuple[str, None], Tuple[None, str]]:
     except Exception as err:
         return None, f"Failed to read file {in_path}. Error: {err}"
 
+
 def write_file(out_path: str, data: str) -> Union[Tuple[bool, None], Tuple[None, str]]:
     try:
         with open(out_path, "wb") as f:
@@ -31,6 +31,7 @@ def write_file(out_path: str, data: str) -> Union[Tuple[bool, None], Tuple[None,
         return True, None
     except Exception as err:
         return None, f"Failed to write file {out_path}. Error: {err}"
+
 
 # TODO - verify types
 def encode_base64(data: bytes) -> Union[Tuple[bytes, None], Tuple[None, str]]:
@@ -53,6 +54,7 @@ def decode_base64(data: bytes) -> Union[Tuple[bool, None], Tuple[None, str]]:
 
     return dec_data, None
 
+
 def compress_file(data: str, filename: str) -> Union[Tuple[bool, None], Tuple[None, str]]:
     zipped_str = b""
     mem_zip = BytesIO()
@@ -67,11 +69,12 @@ def compress_file(data: str, filename: str) -> Union[Tuple[bool, None], Tuple[No
 
     return zipped_str, None
 
+
 def extract_file(data: str, filename: str) -> Union[Tuple[bool, None], Tuple[None, str]]:
     mem_zip = BytesIO(data)
     mem_file = b""
     try:
-        with  zipfile.ZipFile(mem_zip, mode="r", compression=zipfile.ZIP_DEFLATED) as zf:
+        with zipfile.ZipFile(mem_zip, mode="r", compression=zipfile.ZIP_DEFLATED) as zf:
             with zf.open(filename) as myfile:
                 mem_file = myfile.read()
     except Exception as err:
