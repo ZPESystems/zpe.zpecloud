@@ -37,7 +37,7 @@ out_path = "{{ out_path }}"
 compression_method = {{ compression_method }}
 
 
-def decode_file(data: bytes) -> Union[bytes, None]:
+def decode_base64(data: bytes) -> Union[bytes, None]:
     dec_data = b""
     try:
         dec_data = base64.b64decode(data)
@@ -49,7 +49,7 @@ def decode_file(data: bytes) -> Union[bytes, None]:
     return dec_data
 
 
-def extract_data(data: bytes, filename: str) -> Union[bytes, None]:
+def extract_file(data: bytes, filename: str) -> Union[bytes, None]:
     mem_zip = BytesIO(data)
     mem_file = b""
 
@@ -68,12 +68,12 @@ if __name__ == "__main__":
     file_b64_str = "{{ content }}"
 
     # b64 string to bytes
-    decoded_file = decode_file(file_b64_str.encode())
+    decoded_file = decode_base64(file_b64_str.encode())
     if decoded_file is None:
         exit(1)
 
     # extract file from compressed file
-    extracted_file = extract_data(decoded_file, filename)
+    extracted_file = extract_file(decoded_file, filename)
     if extracted_file is None:
         exit(1)
 
@@ -87,9 +87,68 @@ if __name__ == "__main__":
 """
 
 FETCH_FILE_TEMPLATE = """\
-#!/bin/bash
+#!/usr/bin/env python3
 
-{{ command }}
+import base64
+import zipfile
+
+from io import BytesIO
+from typing import Union
+
+filename = "{{ filename }}"
+in_path = "{{ in_path }}"
+compression_method = {{compression_method}}
+
+
+def encode_base64(data: bytes) -> Union[bytes, None]:
+    enc_data = b""
+    try:
+        enc_data = base64.b64encode(data)
+
+    except Exception as err:
+        print(f"Failed to encode data. Error: {err}.")
+        return None
+
+    return enc_data
+
+
+def compress_file(data: bytes, filename: str) -> Union[bytes, None]:
+    zipped_str = b""
+    mem_zip = BytesIO()
+
+    try:
+        with zipfile.ZipFile(mem_zip, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(filename, data)
+        zipped_str = mem_zip.getvalue()
+    except Exception as err:
+        print(f"Failed to compress file. Error: {err}.")
+        return None
+
+    return zipped_str
+
+
+if __name__ == "__main__":
+    data = ""
+    try:
+        with open(in_path, "rb") as f:
+            data = f.read()
+
+    except Exception as err:
+        print(f"Failed to read file {in_path}. Error: {err}.")
+        exit(1)
+
+    # zip original file
+    compressed_file = compress_file(data, filename)
+    if compressed_file is None:
+        exit(1)
+
+    # bytes to base64
+    encoded_file = encode_base64(compressed_file)
+    if encoded_file is None:
+        exit(1)
+
+    # return data that will be used by Ansible
+    print(encoded_file.decode("utf-8"))
 
 """
 
@@ -120,6 +179,11 @@ def render_put_file(out_path: str, file_content: str, filename: str) -> Union[Tu
     }
     return _render_template(PUT_FILE_TEMPLATE, context)
 
-def render_fetch_file(context: Dict) -> Union[Tuple[str, None], Tuple[None, str]]:
+def render_fetch_file(in_path: str, filename: str) -> Union[Tuple[str, None], Tuple[None, str]]:
     """Use jinja to render python script profile needed to move files form host to local."""
+    context = {
+        "in_path": in_path,
+        "filename": filename,
+        "compression_method": 8
+    }
     return _render_template(FETCH_FILE_TEMPLATE, context)

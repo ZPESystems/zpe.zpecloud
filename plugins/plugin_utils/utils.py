@@ -16,6 +16,7 @@ from io import StringIO, BytesIO
 
 
 def read_file(in_path: str) -> Union[Tuple[str, None], Tuple[None, str]]:
+    data = b""
     try:
         with open(in_path, "rb") as f:
             data = f.read()
@@ -33,6 +34,7 @@ def write_file(out_path: str, data: str) -> Union[Tuple[bool, None], Tuple[None,
 
 # TODO - verify types
 def encode_base64(data: bytes) -> Union[Tuple[bytes, None], Tuple[None, str]]:
+    enc_data = b""
     try:
         enc_data = base64.b64encode(data)
 
@@ -43,6 +45,7 @@ def encode_base64(data: bytes) -> Union[Tuple[bytes, None], Tuple[None, str]]:
 
 
 def decode_base64(data: bytes) -> Union[Tuple[bool, None], Tuple[None, str]]:
+    dec_data = b""
     try:
         dec_data = base64.b64decode(data)
     except Exception as err:
@@ -50,22 +53,28 @@ def decode_base64(data: bytes) -> Union[Tuple[bool, None], Tuple[None, str]]:
 
     return dec_data, None
 
-def compress_data(data: str, filename: str) -> Union[Tuple[bool, None], Tuple[None, str]]:
-    zipped_str = ""
+def compress_file(data: str, filename: str) -> Union[Tuple[bool, None], Tuple[None, str]]:
+    zipped_str = b""
     mem_zip = BytesIO()
     # TODO - get algorithm from flag zipfile.ZIP_DEFLATED and check which should be used based on user's computer
     # TODO - validation for errors
-    with zipfile.ZipFile(mem_zip, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr(filename, data)
-    zipped_str = mem_zip.getvalue()
+    try:
+        with zipfile.ZipFile(mem_zip, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(filename, data)
+        zipped_str = mem_zip.getvalue()
+    except Exception as err:
+        return None, f"Failed do compress data. Error: {err}"
 
     return zipped_str, None
 
-def extract_data(data: str, filename: str) -> Union[Tuple[bool, None], Tuple[None, str]]:
+def extract_file(data: str, filename: str) -> Union[Tuple[bool, None], Tuple[None, str]]:
     mem_zip = BytesIO(data)
-    mem_file = ""
-    with  zipfile.ZipFile(mem_zip, mode="r", compression=zipfile.ZIP_DEFLATED) as zf:
-        with zf.open(filename) as myfile:
-            mem_file = myfile.read()
+    mem_file = b""
+    try:
+        with  zipfile.ZipFile(mem_zip, mode="r", compression=zipfile.ZIP_DEFLATED) as zf:
+            with zf.open(filename) as myfile:
+                mem_file = myfile.read()
+    except Exception as err:
+        return None, f"Failed to extract data. Error: {err}"
 
     return mem_file, None

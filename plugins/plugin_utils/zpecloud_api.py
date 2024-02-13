@@ -119,6 +119,14 @@ class ZPECloudAPI:
 
         return True, None
 
+    def logout(self) -> Union[Tuple[bool, str], Tuple[bool, None]]:
+        _, err = self._post(url=f"{self._url}/user/logout", data={}, headers={})
+        if err:
+            return False, err
+
+        return True, None
+
+
     def _get_devices(self, enrolled: bool = True) -> Union[Tuple[List[Dict], None], Tuple[None, str]]:
         if enrolled:
             enroll_param = "&enrolled=1"

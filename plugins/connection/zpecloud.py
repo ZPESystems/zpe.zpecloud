@@ -127,8 +127,8 @@ from ansible_collections.zpe.zpecloud.plugins.plugin_utils.utils import (
     write_file,
     encode_base64,
     decode_base64,
-    compress_data,
-    extract_data
+    compress_file,
+    extract_file
 )
 
 display = Display()
@@ -138,6 +138,7 @@ class Connection(ConnectionBase):
 
     transport = 'zpe.zpecloud.zpecloud'
     has_pipelining = True
+    filename_inside_zip = "original-file"
     # TODO - what this means?
 
     def __init__(self, *args, **kwargs):
@@ -146,6 +147,8 @@ class Connection(ConnectionBase):
         self._api_session = None
         self.host_zpecloud_id = None
 
+    # TODO - create log function that indicates the serialnumber, and job
+    # TODO - probably bug, if execute job in multiple devices, sometimes output is not loaded
 
     def update_vars(self, variables) -> None:
         """ """
@@ -273,7 +276,11 @@ class Connection(ConnectionBase):
             if operation_status == "Successful" and operation_output_file_url and len(operation_output_file_url) > 0:
                 display.v(f"Job {job_id} finished successfully.")
                 r = requests.get(operation_output_file_url)
-                return r.content, None
+
+                if isinstance(r.content, bytes):
+                    return r.content.decode("utf-8"), None
+                else:
+                    return r.content, None
 
             elif operation_status == "Failed" or operation_status == "Cancelled" or operation_status == "Timeout":
                 display.v(f"Job {job_id} failed.")
@@ -285,9 +292,9 @@ class Connection(ConnectionBase):
         # TODO - timeout
         raise AnsibleError(f"Timeout waiting feedback for job {job_id}.")
 
-    def _process_put_file(self, file_content: str) -> Union[Tuple[str, None], Tuple[None, str]]:
+    def _process_put_file(self, data: str) -> Union[Tuple[str, None], Tuple[None, str]]:
         """ """
-        file_zip, err = compress_data(file_content, "blah.txt")
+        file_zip, err = compress_file(data, self.filename_inside_zip)
         if err:
             raise AnsibleError(f"Failed to compress file. Error: {err}")
 
@@ -298,12 +305,32 @@ class Connection(ConnectionBase):
         file_base64 = file_base64.decode("utf-8")
         return file_base64
 
+    def _process_fetch_file(self, data: str) -> Union[Tuple[str, None], Tuple[None, str]]:
+        """ """
+        decoded_file, err = decode_base64(data.encode())
+        if err:
+            raise AnsibleError(f"Failed to decode file. Error: {err}.")
+
+        file_content, err = extract_file(decoded_file, self.filename_inside_zip)
+        if err:
+            raise AnsibleError(f"Failed to extract file. Error: {err}.")
+
+        return file_content
+
 
     def _wrapper_put_file(self, file_content: str, out_path: str) -> Union[Tuple[str, None], Tuple[None, str]]:
         """ """
-        profile_content, err = render_put_file(out_path, file_content, "blah.txt")
+        profile_content, err = render_put_file(out_path, file_content, self.filename_inside_zip)
         if err:
-            raise AnsibleError(f"Failed to render profile. Error: {err}.")
+            raise AnsibleError(f"Failed to render put file profile. Error: {err}.")
+
+        return profile_content
+
+    def _wrapper_fetch_file(self, in_path: str) -> Union[Tuple[str, None], Tuple[None, str]]:
+        """ """
+        profile_content, err = render_fetch_file(in_path, self.filename_inside_zip)
+        if err:
+            raise AnsibleError(f"Failed to render fetch file profile. Error: {err}.")
 
         return profile_content
 
@@ -373,8 +400,6 @@ class Connection(ConnectionBase):
 
         # Create profile in ZPE Cloud
         profile_id = self._create_profile(profile_content)
-        if err:
-            raise AnsibleError("File transfer failed. Error: {err}.")
 
         # TODO - check err or error
 
@@ -397,16 +422,44 @@ class Connection(ConnectionBase):
         display.v(in_path)
         display.v("------> out path: ")
         display.v(out_path)
-        pass
+
+        profile_content = self._wrapper_fetch_file(in_path)
+
+        # Create profile in ZPE Cloud
+        profile_id = self._create_profile(profile_content)
+
+        # TODO - check err or error
+
+        # Apply profile to Nodegrid device
+        job_id = self._apply_profile(self.host_zpecloud_id, profile_id)
+
+        # Wait profile to finish
+        job_output, err = self._wait_job_to_finish(job_id)
+        if err:
+            raise AnsibleError(f"File transfer failed. Error: {err}.")
+
+        with open("/tmp/ansible/job_output.txt", "w") as f:
+            f.write(job_output)
+
+        # Decode output from base64, and extract file from zip
+        file_content = self._process_fetch_file(job_output)
+
+        # write file to local
+        _, err = write_file(out_path, file_content)
+        if err:
+            raise AnsibleError(f"Failed to save file. Error: {err}.")
 
     def close(self):
         """  """
         display.vvvv("[zpecloud connection - close override]")
-        # TODO - logout
+        if self._api_session:
+            _, err = self._api_session.logout()
+            if err:
+                display.warning("Failed to close session from ZPE Cloud. Error: {err}.")
         pass
 
     def reset(self):
         """Reset the connection."""
         display.vvvv("[zpecloud connection - reset override]")
-        # TODO - recreate a connection
-        return
+        self.close()
+        self._connect()
