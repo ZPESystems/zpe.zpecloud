@@ -183,7 +183,7 @@ class Connection(ConnectionBase):
         """ """
         profile_content, err = render_exec_command(cmd)
         if err:
-            raise AnsibleError(f"Failed to execute command. Error: {err}")
+            raise AnsibleError(f"Failed to execute command. Error: {err}.")
 
         return profile_content
 
@@ -220,7 +220,7 @@ class Connection(ConnectionBase):
                 f.close()
 
         if error:
-            raise AnsibleError(f"Failed to create script profile in ZPE Cloud. Error: {error}")
+            raise AnsibleError(f"Failed to create script profile in ZPE Cloud. Error: {error}.")
 
         profile_id = response.get("id", None)
         if profile_id is None:
@@ -232,7 +232,7 @@ class Connection(ConnectionBase):
         """ """
         _, err = self._api_session.delete_profile(profile_id)
         if err:
-            display.warning(f"Failed to delete profile. ID: {profile_id}. Error: {err}")
+            display.warning(f"Failed to delete profile from ZPE Cloud. ID: {profile_id}. Error: {err}.")
 
     def _apply_profile(self, device_id: str, profile_id: str) -> Union[Tuple[str, None], Tuple[None, str]]:
         """ """
@@ -241,7 +241,7 @@ class Connection(ConnectionBase):
         schedule = datetime.utcnow()
         content, err = self._api_session.apply_profile(device_id, profile_id, schedule)
         if err:
-            raise AnsibleError(f"Failed to apply script profile to device. Error: {err}")
+            raise AnsibleError(f"Failed to apply script profile to device. Error: {err}.")
         # TODO - show job uuid and serialnumber
 
         resp = json.loads(content)
@@ -257,7 +257,7 @@ class Connection(ConnectionBase):
 
             content, err = self._api_session.get_job(job_id)
             if err:
-                raise AnsibleError(f"Failed to get status for job {job_id}. Err: {err}")
+                raise AnsibleError(f"Failed to get status for job {job_id}. Err: {err}.")
 
             content = json.loads(content)
             operation_status = content.get("operation", {}).get("status")
@@ -286,11 +286,11 @@ class Connection(ConnectionBase):
         """ """
         file_zip, err = compress_file(data, self.filename_inside_zip)
         if err:
-            raise AnsibleError(f"Failed to compress file. Error: {err}")
+            raise AnsibleError(f"Failed to compress file. Error: {err}.")
 
         file_base64, err = encode_base64(file_zip)
         if err:
-            raise AnsibleError(f"Failed to encode file. Error: {err}")
+            raise AnsibleError(f"Failed to encode file. Error: {err}.")
 
         file_base64 = file_base64.decode("utf-8")
         return file_base64
@@ -375,11 +375,11 @@ class Connection(ConnectionBase):
         display.v(out_path)
 
         if not os.path.exists(to_bytes(in_path, errors="surrogate_or_strict")):
-            raise AnsibleFileNotFound(f"File or module does not exist. Path: {in_path}")
+            raise AnsibleFileNotFound(f"File or module does not exist. Path: {in_path}.")
 
         file_content, err = read_file(in_path)
         if err:
-            raise AnsibleError(f"Failed to read file. Path: {in_path}. Error: {err}")
+            raise AnsibleError(f"Failed to read file. Path: {in_path}. Error: {err}.")
 
         # Zip file content and encode to base64
         file_content = self._process_put_file(file_content)
@@ -402,7 +402,7 @@ class Connection(ConnectionBase):
             raise AnsibleError(f"File transfer failed. Error: {err}.")
 
         # Delete profile from configuration list
-        self._delete_profile(job_id)
+        self._delete_profile(profile_id)
 
     def fetch_file(self, in_path, out_path):
         """ """
@@ -429,8 +429,7 @@ class Connection(ConnectionBase):
         if err:
             raise AnsibleError(f"File transfer failed. Error: {err}.")
 
-        with open("/tmp/ansible/job_output.txt", "w") as f:
-            f.write(job_output)
+        self._delete_profile(profile_id)
 
         # Decode output from base64, and extract file from zip
         file_content = self._process_fetch_file(job_output)
@@ -439,6 +438,7 @@ class Connection(ConnectionBase):
         _, err = write_file(out_path, file_content)
         if err:
             raise AnsibleError(f"Failed to save file. Error: {err}.")
+
 
     def close(self):
         """  """
