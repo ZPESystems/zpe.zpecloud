@@ -1,6 +1,7 @@
 # Copyright (c) 2024, ZPE Systems <zpesystems.com>
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+import json
 import os
 import pytest
 from unittest.mock import MagicMock
@@ -27,6 +28,7 @@ def connection():
     pc = PlayContext()
     conn = Connection(pc, "/dev/null")
     conn.get_option = MagicMock()
+    conn._api_session = MagicMock()
 
     return conn
 
@@ -34,18 +36,20 @@ def connection():
 #### Overwritten methods
 """ Tests for update_vars """
 
+
 def test_store_variables_from_inventory(connection):
     host_variables = {
         "hostname": "hostname123",
         "model": "NSR",
         "serial_number": "12345654321",
-        "zpecloud_id": "50681"
+        "zpecloud_id": "50681",
     }
 
     connection.update_vars(host_variables)
 
     assert connection.host_serial_number == host_variables.get("serial_number")
     assert connection.host_zpecloud_id == host_variables.get("zpecloud_id")
+
 
 """ Tests for update_vars """
 """ Tests for _connect """
@@ -62,14 +66,55 @@ def test_store_variables_from_inventory(connection):
 """ Tests for fetch_file """
 """ Tests for close """
 
+
+@pytest.mark.parametrize(
+    ("session", "expected"),
+    [
+        (MagicMock(), True),
+        (None, False),
+    ],
+)
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
+def close_connection(mock_zpecloud_api, connection, session, expected):
+    """Test connection is being closed."""
+    connection._api_session = MagicMock()
+    mock_zpecloud_api.return_value.logout = MagicMock()
+    mock_zpecloud_api.return_value.logout.return_value = ("", None)
+
+    # TODO - pytest is return mock class instead of string
+    """[WARNING]: ZPE Cloud connection - Host ID: None - Host SN: None - Failed to
+close session from ZPE Cloud. Error: <MagicMock
+name='mock.logout().__getitem__()' id='139724302534640'>."""
+
+    connection.close()
+
+    if expected:
+        mock_zpecloud_api.return_value.logout.assert_called_once()
+
+
 """ Tests for close """
 """ Tests for reset """
+
+
+def test_reset_connection(connection):
+    """Test if reset calls close and connect again."""
+    connection.close = MagicMock()
+    connection.close.return_value = None
+    connection._connect = MagicMock()
+    connection._connect.return_value = None
+
+    connection.reset()
+
+    connection.close.assert_called_once()
+    connection._connect.assert_called_once()
+
 
 """ Tests for reset """
 
 
 #### Other methods
 """ Tests for _create_api_session """
+
 
 @pytest.mark.parametrize(
     ("configuration"),
@@ -124,6 +169,7 @@ def test_create_api_session_read_credentials_from_playbook_vars(
         _options.get("organization")
     )
 
+
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
 def test_create_api_session_read_credentials_from_env_variable(
     mock_zpe_cloud_api, connection
@@ -139,9 +185,9 @@ def test_create_api_session_read_credentials_from_env_variable(
         "ZPECLOUD_ORGANIZATION": "My organization",
     }
 
-    os.environ['ZPECLOUD_USERNAME'] = _options.get("ZPECLOUD_USERNAME")
-    os.environ['ZPECLOUD_PASSWORD'] = _options.get("ZPECLOUD_PASSWORD")
-    os.environ['ZPECLOUD_ORGANIZATION'] = _options.get("ZPECLOUD_ORGANIZATION")
+    os.environ["ZPECLOUD_USERNAME"] = _options.get("ZPECLOUD_USERNAME")
+    os.environ["ZPECLOUD_PASSWORD"] = _options.get("ZPECLOUD_PASSWORD")
+    os.environ["ZPECLOUD_ORGANIZATION"] = _options.get("ZPECLOUD_ORGANIZATION")
 
     connection._create_api_session()
 
@@ -152,6 +198,7 @@ def test_create_api_session_read_credentials_from_env_variable(
     mock_zpe_cloud_api.return_value.change_organization.assert_called_with(
         _options.get("ZPECLOUD_ORGANIZATION")
     )
+
 
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
 def test_create_api_session_zpe_cloud_api_authentication_fail(
@@ -205,6 +252,7 @@ def test_create_api_session_switch_organization_fail(mock_zpe_cloud_api, connect
         _options.get("organization")
     )
 
+
 """ Tests for _create_api_session """
 """ Tests for _wrapper_exec_command """
 
@@ -220,6 +268,59 @@ def test_create_api_session_switch_organization_fail(mock_zpe_cloud_api, connect
 """ Tests for _apply_profile """
 """ Tests for _wait_job_to_finish """
 
+
+def test_wait_job_to_finish_request_fail(connection):
+    """Test wait job to finish but API request failed."""
+    connection._api_session.get_job.return_value = (
+        None,
+        "Some error",
+    )
+
+    with pytest.raises(AnsibleError):
+        connection._wait_job_to_finish("1234")
+
+
+@pytest.mark.parametrize(
+    ("job_status"),
+    [("Cancelled"), ("Timeout"), ("Failed")],
+)
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
+def test_wait_job_to_finish_job_failure(connection, job_status):
+    """Test wait job to finish but job finished in some failure."""
+    connection._api_session.get_job.return_value = (
+        json.dumps({"operation": {"status": job_status}}),
+        None
+    )
+
+    response, err =  connection._wait_job_to_finish("1234")
+
+    assert response == None
+    assert job_status in err
+
+
+def test_wait_job_to_finish_job_timeout(connection):
+    """Test wait job to finish but job timeout."""
+    pass
+
+
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
+def wait_job_to_finish_job_success(mock_zpe_cloud_api, connection):
+    mock_zpe_cloud_api.return_value.get_job.side_effect = [
+        ({"operation": {"status": "Sending"}}, None) * 2,
+        ({"operation": {"status": "Scheduled"}}, None) * 2,
+        ({"operation": {"status": "Started"}}, None) * 2,
+        ({"operation": {"status": "Successful"}}, None),
+    ]
+
+    connection._wait_job_to_finish()
+
+    # assert mock_zpe_cloud_api.return_value.get_job.call_count, 7
+
+
+def wait_job_to_finish_ansible_timeout(connection):
+    pass
+
+
 """ Tests for _wait_job_to_finish """
 """ Tests for _process_put_file """
 
@@ -233,4 +334,23 @@ def test_create_api_session_switch_organization_fail(mock_zpe_cloud_api, connect
 """ Tests for _wrapper_fetch_file """
 
 """ Tests for _wrapper_fetch_file """
+""" Tests for _exponential_backoff_delay """
 
+
+@pytest.mark.parametrize(
+    ("attempt", "max_delay", "expected"),
+    [
+        (0, 256, 1),
+        (1, 256, 1),
+        (2, 256, 2),
+        (3, 256, 4),
+        (7, 256, 64),
+        (10, 256, 256),
+    ],
+)
+def test_exponential_backoff_delay(connection, attempt, max_delay, expected):
+    """Check output exponential backoff delay."""
+    assert connection._exponential_backoff_delay(attempt, max_delay) == expected
+
+
+""" Tests for _exponential_backoff_delay """

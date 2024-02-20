@@ -260,6 +260,17 @@ class Connection(ConnectionBase):
 
         return job_id
 
+    @staticmethod
+    def _exponential_backoff_delay(attempt: int, max_delay: int) -> int:
+        """Generate delay period based on exponential backoff algorithm
+        attempt: Current amount of attempts.
+        max_delay: Max delay time in seconds.
+        return: Delay based on number of attempts, or max delay."""
+        if attempt <= 0:
+            return 1
+
+        return min(2**(attempt-1), max_delay)
+
     def _wait_job_to_finish(self, job_id: str) -> Tuple[bool, str, str]:
         """ """
         # TODO - add a timeout for waiting finish
@@ -287,7 +298,7 @@ class Connection(ConnectionBase):
             elif operation_status == "Failed" or operation_status == "Cancelled" or operation_status == "Timeout":
                 self._log_info(f"Job {job_id} failed")
                 r = requests.get(operation_output_file_url)
-                return None, r.content
+                return None, f"Job finish with status {operation_status}"
 
             time.sleep(1)
 
@@ -453,13 +464,12 @@ class Connection(ConnectionBase):
             raise AnsibleError(f"Failed to save file. Error: {err}.")
 
     def close(self):
-        """  """
+        """Logout from ZPE Cloud API once Ansible closes the connection."""
         self._log_info("[close override]")
         if self._api_session:
             err = self._api_session.logout()[1]
             if err:
-                self._log_warning("Failed to close session from ZPE Cloud. Error: {err}")
-        pass
+                self._log_warning(f"Failed to close session from ZPE Cloud. Error: {err}")
 
     def reset(self):
         """Reset the connection."""
