@@ -147,7 +147,8 @@ class Connection(ConnectionBase):
         self.host_zpecloud_id = None        # id used to reference Nodegrid device in ZPE Cloud
         self.host_serial_number = None
 
-        self.timeout_wait_job_finish = 1000
+        self.timeout_wait_job_finish = 3600
+        self.max_delay_wait_job_finish = 180
 
         self._log_info("[__init__ override]")
 
@@ -272,9 +273,10 @@ class Connection(ConnectionBase):
         return min(2**(attempt-1), max_delay)
 
     def _wait_job_to_finish(self, job_id: str) -> Tuple[bool, str, str]:
-        """ """
-        # TODO - add a timeout for waiting finish
-        while True:
+        """Loop to verify status of job in ZPE Cloud."""
+        request_attempt = 0
+        start_time = time.time()
+        while (time.time() - start_time) <= self.timeout_wait_job_finish:
             self._log_info(f"Checking job status for {job_id}")
             # TODO - add number of attempts
 
@@ -300,10 +302,10 @@ class Connection(ConnectionBase):
                 r = requests.get(operation_output_file_url)
                 return None, f"Job finish with status {operation_status}"
 
-            time.sleep(1)
+            delay = self._exponential_backoff_delay(request_attempt, self.max_delay_wait_job_finish)
+            time.sleep(delay)
 
-        # TODO - timeout
-        raise AnsibleError(f"Timeout waiting feedback for job {job_id}.")
+        return None, "Timeout"
 
     def _process_put_file(self, data: str) -> Union[Tuple[str, None], Tuple[None, str]]:
         """ """
