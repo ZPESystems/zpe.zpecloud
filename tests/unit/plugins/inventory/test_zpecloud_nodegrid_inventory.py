@@ -16,17 +16,8 @@ from ansible_collections.zpe.zpecloud.plugins.inventory.zpecloud_nodegrid_invent
 @pytest.fixture(scope="module")
 def inventory():
     inventory = InventoryModule()
-    inventory.inventory = MagicMock()
-    inventory.inventory.set_variable = MagicMock()
-
-    inventory.all_clients = MagicMock()
     inventory.get_option = MagicMock()
 
-    inventory._populate_host_vars = MagicMock()
-    inventory._set_composite_vars = MagicMock()
-    inventory._add_host_to_composed_groups = MagicMock()
-    inventory._add_host_to_keyed_groups = MagicMock()
-    # inventory.inventory = InventoryData()
     return inventory
 
 

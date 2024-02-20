@@ -126,7 +126,7 @@ display = Display()
 
 
 class Connection(ConnectionBase):
-    """Plugin to create a transport method for Ansible to Nodegrid device over ZPE CLOUD API"""
+    """Plugin to create a transport method between Ansible and Nodegrid device over ZPE CLOUD API."""
 
     transport = 'zpe.zpecloud.zpecloud'
     has_pipelining = True
@@ -141,16 +141,18 @@ class Connection(ConnectionBase):
         display.warning(f"ZPE Cloud connection - Host ID: {self.host_zpecloud_id} - Host SN: {self.host_serial_number} - {message}.")
 
     def __init__(self, *args, **kwargs):
-        """Initialize ZPE Cloud connection plugin"""
+        """Initialize ZPE Cloud connection plugin."""
         super(Connection, self).__init__(*args, **kwargs)
         self._api_session = None
         self.host_zpecloud_id = None        # id used to reference Nodegrid device in ZPE Cloud
         self.host_serial_number = None
 
+        self.timeout_wait_job_finish = 1000
+
         self._log_info("[__init__ override]")
 
     def update_vars(self, variables) -> None:
-        """Override function used to get variables from playbook."""
+        """Override function used to get variables related to target host."""
         self.host_serial_number = variables.get("serial_number", None)
         self.host_zpecloud_id = variables.get("zpecloud_id", None)
 
