@@ -147,8 +147,11 @@ class Connection(ConnectionBase):
         self.host_zpecloud_id = None        # id used to reference Nodegrid device in ZPE Cloud
         self.host_serial_number = None
 
-        self.timeout_wait_job_finish = 3600
-        self.max_delay_wait_job_finish = 180
+        self.timeout_wait_job_finish = 3600     # seconds
+        self.max_delay_wait_job_finish = 180    # seconds
+
+        self.max_file_size_put_file = 100000000     # bytes
+        self.max_file_size_fetch_file = 100000000   # bytes
 
         self._log_info("[__init__ override]")
 
@@ -222,17 +225,17 @@ class Connection(ConnectionBase):
                 ("dynamic", (None, "false")),
                 ("file", (profile_name, f)))
 
-            response, error = self._api_session.create_profile(payload_file)
+            response, err = self._api_session.create_profile(payload_file)
 
         except Exception as err:
-            error = err
+            pass
 
         finally:
             if f:
                 f.close()
 
-        if error:
-            raise AnsibleError(f"Failed to create script profile in ZPE Cloud. Error: {error}.")
+        if err:
+            raise AnsibleError(f"Failed to create script profile in ZPE Cloud. Error: {err}.")
 
         profile_id = response.get("id", None)
         if profile_id is None:
@@ -253,8 +256,7 @@ class Connection(ConnectionBase):
         schedule = datetime.utcnow()
         content, err = self._api_session.apply_profile(device_id, profile_id, schedule)
         if err:
-            raise AnsibleError(f"Failed to apply script profile to device. Error: {err}.")
-        # TODO - show job uuid and serialnumber
+            raise AnsibleError(f"Failed to apply script profile {profile_id} to device {self.host_serial_number}. Error: {err}.")
 
         resp = json.loads(content)
         job_id = resp.get("job_id")
@@ -277,8 +279,7 @@ class Connection(ConnectionBase):
         request_attempt = 0
         start_time = time.time()
         while (time.time() - start_time) <= self.timeout_wait_job_finish:
-            self._log_info(f"Checking job status for {job_id}")
-            # TODO - add number of attempts
+            self._log_info(f"Checking job status for {job_id} - Attempt {request_attempt}")
 
             content, err = self._api_session.get_job(job_id)
             if err:
@@ -303,6 +304,7 @@ class Connection(ConnectionBase):
                 return None, f"Job finish with status {operation_status}"
 
             delay = self._exponential_backoff_delay(request_attempt, self.max_delay_wait_job_finish)
+            request_attempt += 1
             time.sleep(delay)
 
         return None, "Timeout"
@@ -342,7 +344,7 @@ class Connection(ConnectionBase):
 
     def _wrapper_fetch_file(self, in_path: str) -> Union[Tuple[str, None], Tuple[None, str]]:
         """ """
-        profile_content, err = render_fetch_file(in_path, self.filename_inside_zip)
+        profile_content, err = render_fetch_file(in_path, self.filename_inside_zip, self.max_file_size_fetch_file)
         if err:
             raise AnsibleError(f"Failed to render fetch file profile. Error: {err}.")
 
@@ -369,8 +371,6 @@ class Connection(ConnectionBase):
 
         display.v("Patched cmd")
         display.v(f"{cmd}")
-
-        # TODO - test wrapped profile
 
         profile_content = self._wrapper_exec_command(cmd)
 
@@ -403,6 +403,10 @@ class Connection(ConnectionBase):
         if not os.path.exists(to_bytes(in_path, errors="surrogate_or_strict")):
             raise AnsibleFileNotFound(f"File or module does not exist. Path: {in_path}.")
 
+        file_stat = os.stat(to_bytes(in_path, errors="surrogate_or_strict"))
+        if file_stat.st_size > self.max_file_size_put_file:
+            raise AnsibleError(f"Size of file {in_path} is bigger than limit of {self.max_file_size_put_file} bytes.")
+
         file_content, err = read_file(in_path)
         if err:
             raise AnsibleError(f"Failed to read file. Path: {in_path}. Error: {err}.")
@@ -412,12 +416,8 @@ class Connection(ConnectionBase):
 
         profile_content = self._wrapper_put_file(file_content, out_path)
 
-        # TODO - test wrapped profile
-
         # Create profile in ZPE Cloud
         profile_id = self._create_profile(profile_content)
-
-        # TODO - check err or error
 
         # Apply profile to Nodegrid device
         job_id = self._apply_profile(self.host_zpecloud_id, profile_id)
@@ -444,8 +444,6 @@ class Connection(ConnectionBase):
 
         # Create profile in ZPE Cloud
         profile_id = self._create_profile(profile_content)
-
-        # TODO - check err or error
 
         # Apply profile to Nodegrid device
         job_id = self._apply_profile(self.host_zpecloud_id, profile_id)
@@ -478,12 +476,3 @@ class Connection(ConnectionBase):
         self._log_info("[reset override]")
         self.close()
         self._connect()
-
-
-# TODO - check memory usage for put file
-
-
-# TODO - inventory plugin is logging a strange error if credentials are not passed
-        """"
-[WARNING]:  * Failed to parse /home/yocto/workdir/random_code/ansible_collection/playbooks/demo_company/zpecloud.yml with auto plugin: No setting was provided for required configuration plugin_type: inventory plugin:
-ansible_collections.zpe.zpecloud.plugins.inventory.zpecloud_nodegrid_inventory setting: username"""

@@ -90,6 +90,7 @@ FETCH_FILE_TEMPLATE = """\
 #!/usr/bin/env python3
 
 import base64
+import os
 import zipfile
 
 from io import BytesIO
@@ -97,7 +98,8 @@ from typing import Union
 
 filename = "{{ filename }}"
 in_path = "{{ in_path }}"
-compression_method = {{compression_method}}
+compression_method = {{ compression_method }}
+max_file_size = {{ max_file_size }}
 
 
 def encode_base64(data: bytes) -> Union[bytes, None]:
@@ -129,6 +131,16 @@ def compress_file(data: bytes, filename: str) -> Union[bytes, None]:
 
 if __name__ == "__main__":
     data = ""
+
+    if not os.path.exists(in_path):
+        print(f"File {in_path} does not exist.")
+        exit(1)
+
+    file_stat = os.stat(in_path)
+    if file_stat.st_size > max_file_size:
+        print(f"Size of file {in_path} is bigger than limit of {max_file_size} bytes.")
+        exit(1)
+
     try:
         with open(in_path, "rb") as f:
             data = f.read()
@@ -183,11 +195,12 @@ def render_put_file(out_path: str, file_content: str, filename: str) -> Union[Tu
     return _render_template(PUT_FILE_TEMPLATE, context)
 
 
-def render_fetch_file(in_path: str, filename: str) -> Union[Tuple[str, None], Tuple[None, str]]:
+def render_fetch_file(in_path: str, filename: str, max_file_size: int) -> Union[Tuple[str, None], Tuple[None, str]]:
     """Use jinja to render python script profile needed to move files form host to local."""
     context = {
         "in_path": in_path,
         "filename": filename,
-        "compression_method": 8
+        "compression_method": 8,
+        "max_file_size": max_file_size
     }
     return _render_template(FETCH_FILE_TEMPLATE, context)
