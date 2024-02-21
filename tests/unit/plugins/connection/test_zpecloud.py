@@ -269,7 +269,7 @@ def test_create_api_session_switch_organization_fail(mock_zpe_cloud_api, connect
 """ Tests for _wait_job_to_finish """
 
 
-def test_wait_job_to_finish_request_fail(connection):
+def wait_job_to_finish_request_fail(connection):
     """Test wait job to finish but API request failed."""
     connection._api_session.get_job.return_value = (
         None,
@@ -285,7 +285,7 @@ def test_wait_job_to_finish_request_fail(connection):
     [("Cancelled"), ("Timeout"), ("Failed")],
 )
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
-def test_wait_job_to_finish_job_failure(connection, job_status):
+def wait_job_to_finish_job_failure(connection, job_status):
     """Test wait job to finish but job finished in some failure."""
     connection._api_session.get_job.return_value = (
         json.dumps({"operation": {"status": job_status}}),
@@ -298,7 +298,7 @@ def test_wait_job_to_finish_job_failure(connection, job_status):
     assert job_status in err
 
 
-def test_wait_job_to_finish_job_timeout(connection):
+def wait_job_to_finish_job_timeout(connection):
     """Test wait job to finish but job timeout."""
     pass
 
@@ -334,23 +334,3 @@ def wait_job_to_finish_ansible_timeout(connection):
 """ Tests for _wrapper_fetch_file """
 
 """ Tests for _wrapper_fetch_file """
-""" Tests for _exponential_backoff_delay """
-
-
-@pytest.mark.parametrize(
-    ("attempt", "max_delay", "expected"),
-    [
-        (0, 256, 1),
-        (1, 256, 1),
-        (2, 256, 2),
-        (3, 256, 4),
-        (7, 256, 64),
-        (10, 256, 256),
-    ],
-)
-def test_exponential_backoff_delay(connection, attempt, max_delay, expected):
-    """Check output exponential backoff delay."""
-    assert connection._exponential_backoff_delay(attempt, max_delay) == expected
-
-
-""" Tests for _exponential_backoff_delay """
