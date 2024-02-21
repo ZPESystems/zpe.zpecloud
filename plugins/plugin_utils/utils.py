@@ -9,15 +9,19 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
-from typing import Union, Tuple
 import base64
 import zipfile
 from io import BytesIO
 
+from ansible_collections.zpe.zpecloud.plugins.plugin_utils.types import (
+    BooleanError,
+    BytesError,
+)
+
 # todo - check if compression algorithm is supported
 
 
-def read_file(in_path: str) -> Union[Tuple[str, None], Tuple[None, str]]:
+def read_file(in_path: str) -> BytesError:
     data = b""
     try:
         with open(in_path, "rb") as f:
@@ -27,7 +31,7 @@ def read_file(in_path: str) -> Union[Tuple[str, None], Tuple[None, str]]:
         return None, f"Failed to read file {in_path}. Error: {err}"
 
 
-def write_file(out_path: str, data: str) -> Union[Tuple[bool, None], Tuple[None, str]]:
+def write_file(out_path: str, data: str) -> BooleanError:
     try:
         with open(out_path, "wb") as f:
             f.write(data)
@@ -37,7 +41,7 @@ def write_file(out_path: str, data: str) -> Union[Tuple[bool, None], Tuple[None,
 
 
 # TODO - verify types
-def encode_base64(data: bytes) -> Union[Tuple[bytes, None], Tuple[None, str]]:
+def encode_base64(data: bytes) -> BytesError:
     enc_data = b""
     try:
         enc_data = base64.b64encode(data)
@@ -48,7 +52,7 @@ def encode_base64(data: bytes) -> Union[Tuple[bytes, None], Tuple[None, str]]:
     return enc_data, None
 
 
-def decode_base64(data: bytes) -> Union[Tuple[bool, None], Tuple[None, str]]:
+def decode_base64(data: bytes) -> BytesError:
     dec_data = b""
     try:
         dec_data = base64.b64decode(data)
@@ -58,13 +62,10 @@ def decode_base64(data: bytes) -> Union[Tuple[bool, None], Tuple[None, str]]:
     return dec_data, None
 
 
-def compress_file(
-    data: str, filename: str
-) -> Union[Tuple[bool, None], Tuple[None, str]]:
+def compress_file(data: str, filename: str) -> BytesError:
     zipped_str = b""
     mem_zip = BytesIO()
     # TODO - get algorithm from flag zipfile.ZIP_DEFLATED and check which should be used based on user's computer
-    # TODO - validation for errors
     try:
         with zipfile.ZipFile(mem_zip, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
             zf.writestr(filename, data)
@@ -75,9 +76,7 @@ def compress_file(
     return zipped_str, None
 
 
-def extract_file(
-    data: str, filename: str
-) -> Union[Tuple[bool, None], Tuple[None, str]]:
+def extract_file(data: str, filename: str) -> BytesError:
     mem_zip = BytesIO(data)
     mem_file = b""
     try:

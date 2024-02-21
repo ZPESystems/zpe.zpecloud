@@ -12,6 +12,7 @@ __metaclass__ = type
 from typing import List, Dict, Union, Tuple, Any
 
 StringError = Union[Tuple[str, None], Tuple[Any, str]]
+BytesError = Union[Tuple[bytes, None], Tuple[Any, str]]
 BooleanError = Union[Tuple[bool, None], Tuple[bool, str]]
 DictError = Union[Tuple[Dict, None], Tuple[None, str]]
 ListDictError = Union[Tuple[List[Dict], None], Tuple[None, str]]
