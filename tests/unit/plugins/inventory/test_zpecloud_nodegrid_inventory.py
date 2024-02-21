@@ -15,7 +15,9 @@ from ansible_collections.zpe.zpecloud.plugins.inventory.zpecloud_nodegrid_invent
 
 if not sys.warnoptions:
     import warnings
+
     warnings.simplefilter("ignore")
+
 
 @pytest.fixture(scope="module")
 def inventory():
@@ -114,9 +116,9 @@ def test_create_api_session_read_credentials_from_env_variable(
         "ZPECLOUD_ORGANIZATION": "My organization",
     }
 
-    os.environ['ZPECLOUD_USERNAME'] = _options.get("ZPECLOUD_USERNAME")
-    os.environ['ZPECLOUD_PASSWORD'] = _options.get("ZPECLOUD_PASSWORD")
-    os.environ['ZPECLOUD_ORGANIZATION'] = _options.get("ZPECLOUD_ORGANIZATION")
+    os.environ["ZPECLOUD_USERNAME"] = _options.get("ZPECLOUD_USERNAME")
+    os.environ["ZPECLOUD_PASSWORD"] = _options.get("ZPECLOUD_PASSWORD")
+    os.environ["ZPECLOUD_ORGANIZATION"] = _options.get("ZPECLOUD_ORGANIZATION")
 
     inventory._create_api_session()
 
