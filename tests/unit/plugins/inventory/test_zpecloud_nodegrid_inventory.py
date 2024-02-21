@@ -3,6 +3,7 @@
 
 import os
 import pytest
+import sys
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -12,6 +13,9 @@ from ansible_collections.zpe.zpecloud.plugins.inventory.zpecloud_nodegrid_invent
     InventoryModule,
 )
 
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter("ignore")
 
 @pytest.fixture(scope="module")
 def inventory():

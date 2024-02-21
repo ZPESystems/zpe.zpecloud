@@ -4,6 +4,7 @@
 import json
 import os
 import pytest
+import sys
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -15,6 +16,11 @@ from ansible.errors import (
 )
 
 from ansible_collections.zpe.zpecloud.plugins.connection.zpecloud import Connection
+
+if not sys.warnoptions:
+    import warnings
+
+    warnings.simplefilter("ignore")
 
 
 # Fixture for connection plugin

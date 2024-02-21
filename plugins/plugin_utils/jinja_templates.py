@@ -31,14 +31,14 @@ import zipfile
 
 from io import BytesIO
 from pwd import getpwnam
-from typing import Union
+from typing import Optional
 
 filename = "{{ filename }}"
 out_path = "{{ out_path }}"
 compression_method = {{ compression_method }}
 
 
-def decode_base64(data: bytes) -> Union[bytes, None]:
+def decode_base64(data: bytes) -> Optional[bytes]:
     dec_data = b""
     try:
         dec_data = base64.b64decode(data)
@@ -50,7 +50,7 @@ def decode_base64(data: bytes) -> Union[bytes, None]:
     return dec_data
 
 
-def extract_file(data: bytes, filename: str) -> Union[bytes, None]:
+def extract_file(data: bytes, filename: str) -> Optional[bytes]:
     mem_zip = BytesIO(data)
     mem_file = b""
 
@@ -95,7 +95,7 @@ import os
 import zipfile
 
 from io import BytesIO
-from typing import Union
+from typing import Optional
 
 filename = "{{ filename }}"
 in_path = "{{ in_path }}"
@@ -103,7 +103,7 @@ compression_method = {{ compression_method }}
 max_file_size = {{ max_file_size }}
 
 
-def encode_base64(data: bytes) -> Union[bytes, None]:
+def encode_base64(data: bytes) -> Optional[bytes]:
     enc_data = b""
     try:
         enc_data = base64.b64encode(data)
@@ -115,7 +115,7 @@ def encode_base64(data: bytes) -> Union[bytes, None]:
     return enc_data
 
 
-def compress_file(data: bytes, filename: str) -> Union[bytes, None]:
+def compress_file(data: bytes, filename: str) -> Optional[bytes]:
     zipped_str = b""
     mem_zip = BytesIO()
 

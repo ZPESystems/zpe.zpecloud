@@ -80,10 +80,15 @@ EXAMPLES = r"""
 
 import json
 import os
-import requests
 import time
 import uuid
 
+try:
+    import requests
+except ImportError as err:
+    REQUESTS_IMPORT_ERROR = err
+else:
+    REQUESTS_IMPORT_ERROR = None
 
 from datetime import datetime
 from typing import Tuple
@@ -119,6 +124,9 @@ from ansible_collections.zpe.zpecloud.plugins.plugin_utils.utils import (
 
 display = Display()
 
+MINUTE = 60  # seconds
+MEGABYTE = 1000000  # bytes
+
 
 class Connection(ConnectionBase):
     """Plugin to create a transport method between Ansible and Nodegrid device over ZPE CLOUD API."""
@@ -150,11 +158,16 @@ class Connection(ConnectionBase):
         )
         self.host_serial_number = None
 
-        self.timeout_wait_job_finish = 3600  # seconds
-        self.max_delay_wait_job_finish = 180  # seconds
+        self.timeout_wait_job_finish = 60 * MINUTE  # seconds
+        self.max_delay_wait_job_finish = 3 * MINUTE  # seconds
 
-        self.max_file_size_put_file = 100000000  # bytes
-        self.max_file_size_fetch_file = 100000000  # bytes
+        self.max_file_size_put_file = 100 * MEGABYTE  # bytes
+        self.max_file_size_fetch_file = 100 * MEGABYTE  # bytes
+
+        if REQUESTS_IMPORT_ERROR:
+            raise AnsibleConnectionFailure(
+                "Requests library must be installed to use this plugin."
+            )
 
         self._log_info("[__init__ override]")
 
@@ -414,9 +427,6 @@ class Connection(ConnectionBase):
                 "Executable process in command does not match expected process."
             )
 
-        display.v("Patched cmd")
-        display.v(f"{cmd}")
-
         profile_content = self._wrapper_exec_command(cmd)
 
         # create a profile in ZPE Cloud
@@ -443,11 +453,6 @@ class Connection(ConnectionBase):
         """
         super(Connection, self).put_file(in_path, out_path)
         self._log_info("[put_file override]")
-
-        display.v("------> in path: ")
-        display.v(in_path)
-        display.v("------> out path: ")
-        display.v(out_path)
 
         if not os.path.exists(to_bytes(in_path, errors="surrogate_or_strict")):
             raise AnsibleFileNotFound(
@@ -491,11 +496,6 @@ class Connection(ConnectionBase):
         extracted, and then write to local path."""
         super(Connection, self).fetch_file(in_path, out_path)
         self._log_info("[fetch_file override]")
-
-        display.v("------> in path: ")
-        display.v(in_path)
-        display.v("------> out path: ")
-        display.v(out_path)
 
         profile_content = self._wrapper_fetch_file(in_path)
 

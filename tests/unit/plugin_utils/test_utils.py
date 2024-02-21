@@ -2,6 +2,12 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import pytest
+import sys
+
+if not sys.warnoptions:
+    import warnings
+
+    warnings.simplefilter("ignore")
 
 from ansible_collections.zpe.zpecloud.plugins.plugin_utils.utils import (
     exponential_backoff_delay,
