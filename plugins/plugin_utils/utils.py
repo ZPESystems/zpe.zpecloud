@@ -81,3 +81,13 @@ def extract_file(data: str, filename: str) -> Union[Tuple[bool, None], Tuple[Non
         return None, f"Failed to extract data. Error: {err}"
 
     return mem_file, None
+
+def exponential_backoff_delay(attempt: int, max_delay: int) -> int:
+    """Generate delay period based on exponential backoff algorithm
+    attempt: Current amount of attempts.
+    max_delay: Max delay time in seconds.
+    return: Delay based on number of attempts, or max delay."""
+    if attempt <= 0:
+        return 1
+
+    return min(2 ** (attempt - 1), max_delay)

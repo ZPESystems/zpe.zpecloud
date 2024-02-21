@@ -123,6 +123,7 @@ from ansible_collections.zpe.zpecloud.plugins.plugin_utils.utils import (
     decode_base64,
     compress_file,
     extract_file,
+    exponential_backoff_delay,
 )
 
 display = Display()
@@ -303,17 +304,6 @@ class Connection(ConnectionBase):
 
         return job_id
 
-    @staticmethod
-    def _exponential_backoff_delay(attempt: int, max_delay: int) -> int:
-        """Generate delay period based on exponential backoff algorithm
-        attempt: Current amount of attempts.
-        max_delay: Max delay time in seconds.
-        return: Delay based on number of attempts, or max delay."""
-        if attempt <= 0:
-            return 1
-
-        return min(2 ** (attempt - 1), max_delay)
-
     def _wait_job_to_finish(self, job_id: str) -> Tuple[bool, str, str]:
         """Loop to verify status of job in ZPE Cloud."""
         request_attempt = 0
@@ -355,7 +345,7 @@ class Connection(ConnectionBase):
                 r = requests.get(operation_output_file_url)
                 return None, f"Job finish with status {operation_status}"
 
-            delay = self._exponential_backoff_delay(
+            delay = exponential_backoff_delay(
                 request_attempt, self.max_delay_wait_job_finish
             )
             request_attempt += 1
@@ -426,7 +416,8 @@ class Connection(ConnectionBase):
 
     def exec_command(self, cmd: str, in_data: bytes = None, sudoable: bool = True):
         """Ansible connection override function responsible to execute commands on host.
-        Commands created by Ansible will be wrapped on a script profile to be executed via ZPE Cloud."""
+        Commands created by Ansible will be wrapped on a script profile to be executed via ZPE Cloud.
+        """
         super(Connection, self).exec_command(cmd, in_data=in_data, sudoable=sudoable)
         self._log_info("[exec_command override]")
 
@@ -438,7 +429,9 @@ class Connection(ConnectionBase):
         if self._play_context.executable in cmd:
             cmd = cmd.replace(self._play_context.executable, "su ansible")
         else:
-            raise AnsibleError("Executable process in command does not match expected process.")
+            raise AnsibleError(
+                "Executable process in command does not match expected process."
+            )
 
         display.v("Patched cmd")
         display.v(f"{cmd}")
@@ -465,7 +458,8 @@ class Connection(ConnectionBase):
         """Ansible connection override function responsible to transfer file from local to host.
         Files are compressed, converted to base64, and then wrapped in script profile that is executed on
         host via ZPE Cloud.
-        Once executed in the host, the script will decode, extract the files, and then write to host path."""
+        Once executed in the host, the script will decode, extract the files, and then write to host path.
+        """
         super(Connection, self).put_file(in_path, out_path)
         self._log_info("[put_file override]")
 
