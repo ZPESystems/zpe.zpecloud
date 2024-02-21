@@ -10,7 +10,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 import json
-from typing import List, Dict, Union, Tuple, Any
+from typing import Dict, Tuple
 from urllib.parse import urlparse
 from datetime import datetime
 
@@ -27,6 +27,7 @@ from ansible_collections.zpe.zpecloud.plugins.plugin_utils.types import (
     DictError,
     ListDictError,
 )
+
 
 class MissingDependencyError(Exception):
     """System does not have necessary dependency."""
@@ -84,9 +85,7 @@ class ZPECloudAPI:
         else:
             return "", r.reason
 
-    def authenticate_with_password(
-        self, username: str, password: str
-    ) -> BooleanError:
+    def authenticate_with_password(self, username: str, password: str) -> BooleanError:
         payload = {"email": username, "password": password}
         content, err = self._post(url=f"{self._url}/user/auth", data=payload)
         if err:

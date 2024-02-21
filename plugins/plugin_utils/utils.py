@@ -6,6 +6,7 @@
 
 # Make coding more python3-ish, this is required for contributions to Ansible
 from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
 from typing import Union, Tuple
@@ -57,7 +58,9 @@ def decode_base64(data: bytes) -> Union[Tuple[bool, None], Tuple[None, str]]:
     return dec_data, None
 
 
-def compress_file(data: str, filename: str) -> Union[Tuple[bool, None], Tuple[None, str]]:
+def compress_file(
+    data: str, filename: str
+) -> Union[Tuple[bool, None], Tuple[None, str]]:
     zipped_str = b""
     mem_zip = BytesIO()
     # TODO - get algorithm from flag zipfile.ZIP_DEFLATED and check which should be used based on user's computer
@@ -72,7 +75,9 @@ def compress_file(data: str, filename: str) -> Union[Tuple[bool, None], Tuple[No
     return zipped_str, None
 
 
-def extract_file(data: str, filename: str) -> Union[Tuple[bool, None], Tuple[None, str]]:
+def extract_file(
+    data: str, filename: str
+) -> Union[Tuple[bool, None], Tuple[None, str]]:
     mem_zip = BytesIO(data)
     mem_file = b""
     try:
@@ -83,6 +88,7 @@ def extract_file(data: str, filename: str) -> Union[Tuple[bool, None], Tuple[Non
         return None, f"Failed to extract data. Error: {err}"
 
     return mem_file, None
+
 
 def exponential_backoff_delay(attempt: int, max_delay: int) -> int:
     """Generate delay period based on exponential backoff algorithm

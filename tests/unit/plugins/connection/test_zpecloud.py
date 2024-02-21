@@ -7,16 +7,11 @@ import pytest
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-from ansible.plugins.connection import ConnectionBase
-from ansible.plugins.loader import connection_loader, become_loader
 from ansible.playbook.play_context import PlayContext
 
 from ansible.errors import (
-    AnsibleAuthenticationFailure,
     AnsibleConnectionFailure,
     AnsibleError,
-    AnsibleFileNotFound,
-    AnsibleOptionsError,
 )
 
 from ansible_collections.zpe.zpecloud.plugins.connection.zpecloud import Connection
@@ -33,7 +28,7 @@ def connection():
     return conn
 
 
-#### Overwritten methods
+# Overwritten methods
 """ Tests for update_vars """
 
 
@@ -112,7 +107,7 @@ def test_reset_connection(connection):
 """ Tests for reset """
 
 
-#### Other methods
+# Other methods
 """ Tests for _create_api_session """
 
 
@@ -289,12 +284,12 @@ def wait_job_to_finish_job_failure(connection, job_status):
     """Test wait job to finish but job finished in some failure."""
     connection._api_session.get_job.return_value = (
         json.dumps({"operation": {"status": job_status}}),
-        None
+        None,
     )
 
-    response, err =  connection._wait_job_to_finish("1234")
+    response, err = connection._wait_job_to_finish("1234")
 
-    assert response == None
+    assert response is None
     assert job_status in err
 
 

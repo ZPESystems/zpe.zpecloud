@@ -86,26 +86,17 @@ import uuid
 
 
 from datetime import datetime
-from typing import Tuple, Union
+from typing import Tuple
 from io import StringIO
 
-from ansible import constants as C
 from ansible.errors import (
-    AnsibleAuthenticationFailure,
     AnsibleConnectionFailure,
     AnsibleError,
     AnsibleFileNotFound,
-    AnsibleOptionsError,
 )
-from ansible.compat import selectors
-from ansible.module_utils.six import PY3, text_type, binary_type
-from ansible.module_utils.six.moves import shlex_quote
 from ansible.module_utils._text import to_bytes, to_text
-from ansible.module_utils.parsing.convert_bool import BOOLEANS, boolean
-from ansible.plugins.connection import ConnectionBase, BUFSIZE
-from ansible.plugins.shell.powershell import _parse_clixml
+from ansible.plugins.connection import ConnectionBase
 from ansible.utils.display import Display
-from ansible.utils.path import unfrackpath, makedirs_safe
 
 from ansible_collections.zpe.zpecloud.plugins.plugin_utils.zpecloud_api import (
     ZPECloudAPI,
@@ -125,14 +116,6 @@ from ansible_collections.zpe.zpecloud.plugins.plugin_utils.utils import (
     extract_file,
     exponential_backoff_delay,
 )
-
-from ansible_collections.zpe.zpecloud.plugins.plugin_utils.types import (
-    StringError,
-    BooleanError,
-    DictError,
-    ListDictError,
-)
-
 
 display = Display()
 
@@ -230,9 +213,7 @@ class Connection(ConnectionBase):
                     f"Failed to switch organization. Error: {err}."
                 )
 
-    def _wrapper_exec_command(
-        self, cmd: str
-    ) -> str:
+    def _wrapper_exec_command(self, cmd: str) -> str:
         """ """
         profile_content, err = render_exec_command(cmd)
         if err:
@@ -240,9 +221,7 @@ class Connection(ConnectionBase):
 
         return profile_content
 
-    def _create_profile(
-        self, profile_content: str
-    ) -> str:
+    def _create_profile(self, profile_content: str) -> str:
         """ """
         profile_name = f"ansible_{uuid.uuid4()}"
         self._log_info(f"Creating profile: {profile_name}")
@@ -268,8 +247,8 @@ class Connection(ConnectionBase):
 
             response, err = self._api_session.create_profile(payload_file)
 
-        except Exception as err:
-            pass
+        except Exception as error:
+            err = error
 
         finally:
             if f:
@@ -294,9 +273,7 @@ class Connection(ConnectionBase):
                 f"Failed to delete profile from ZPE Cloud. ID: {profile_id}. Error: {err}"
             )
 
-    def _apply_profile(
-        self, device_id: str, profile_id: str
-    ) -> str:
+    def _apply_profile(self, device_id: str, profile_id: str) -> str:
         """ """
         self._log_info(f"Applying profile {profile_id} to device: {device_id}")
 
@@ -374,9 +351,7 @@ class Connection(ConnectionBase):
         file_base64 = file_base64.decode("utf-8")
         return file_base64
 
-    def _process_fetch_file(
-        self, data: str
-    ) -> str:
+    def _process_fetch_file(self, data: str) -> str:
         """ """
         decoded_file, err = decode_base64(data.encode())
         if err:
@@ -388,9 +363,7 @@ class Connection(ConnectionBase):
 
         return file_content
 
-    def _wrapper_put_file(
-        self, file_content: str, out_path: str
-    ) -> str:
+    def _wrapper_put_file(self, file_content: str, out_path: str) -> str:
         """ """
         profile_content, err = render_put_file(
             out_path, file_content, self.filename_inside_zip
@@ -400,9 +373,7 @@ class Connection(ConnectionBase):
 
         return profile_content
 
-    def _wrapper_fetch_file(
-        self, in_path: str
-    ) -> str:
+    def _wrapper_fetch_file(self, in_path: str) -> str:
         """ """
         profile_content, err = render_fetch_file(
             in_path, self.filename_inside_zip, self.max_file_size_fetch_file
@@ -422,7 +393,9 @@ class Connection(ConnectionBase):
             self._create_api_session()
         return self
 
-    def exec_command(self, cmd: str, in_data: bytes = None, sudoable: bool = True) -> Tuple[bool, str, str]:
+    def exec_command(
+        self, cmd: str, in_data: bytes = None, sudoable: bool = True
+    ) -> Tuple[bool, str, str]:
         """Ansible connection override function responsible to execute commands on host.
         Commands created by Ansible will be wrapped on a script profile to be executed via ZPE Cloud.
         """
