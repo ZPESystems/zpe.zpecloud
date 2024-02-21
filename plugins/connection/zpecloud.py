@@ -126,6 +126,14 @@ from ansible_collections.zpe.zpecloud.plugins.plugin_utils.utils import (
     exponential_backoff_delay,
 )
 
+from ansible_collections.zpe.zpecloud.plugins.plugin_utils.types import (
+    StringError,
+    BooleanError,
+    DictError,
+    ListDictError,
+)
+
+
 display = Display()
 
 
@@ -150,7 +158,7 @@ class Connection(ConnectionBase):
             f"ZPE Cloud connection - Host ID: {self.host_zpecloud_id} - Host SN: {self.host_serial_number} - {message}."
         )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         """Initialize ZPE Cloud connection plugin."""
         super(Connection, self).__init__(*args, **kwargs)
         self._api_session = None
@@ -224,7 +232,7 @@ class Connection(ConnectionBase):
 
     def _wrapper_exec_command(
         self, cmd: str
-    ) -> Union[Tuple[str, None], Tuple[None, str]]:
+    ) -> str:
         """ """
         profile_content, err = render_exec_command(cmd)
         if err:
@@ -234,7 +242,7 @@ class Connection(ConnectionBase):
 
     def _create_profile(
         self, profile_content: str
-    ) -> Union[Tuple[str, None], Tuple[None, str]]:
+    ) -> str:
         """ """
         profile_name = f"ansible_{uuid.uuid4()}"
         self._log_info(f"Creating profile: {profile_name}")
@@ -288,7 +296,7 @@ class Connection(ConnectionBase):
 
     def _apply_profile(
         self, device_id: str, profile_id: str
-    ) -> Union[Tuple[str, None], Tuple[None, str]]:
+    ) -> str:
         """ """
         self._log_info(f"Applying profile {profile_id} to device: {device_id}")
 
@@ -353,7 +361,7 @@ class Connection(ConnectionBase):
 
         return None, "Timeout"
 
-    def _process_put_file(self, data: str) -> Union[Tuple[str, None], Tuple[None, str]]:
+    def _process_put_file(self, data: str) -> str:
         """ """
         file_zip, err = compress_file(data, self.filename_inside_zip)
         if err:
@@ -368,7 +376,7 @@ class Connection(ConnectionBase):
 
     def _process_fetch_file(
         self, data: str
-    ) -> Union[Tuple[str, None], Tuple[None, str]]:
+    ) -> str:
         """ """
         decoded_file, err = decode_base64(data.encode())
         if err:
@@ -382,7 +390,7 @@ class Connection(ConnectionBase):
 
     def _wrapper_put_file(
         self, file_content: str, out_path: str
-    ) -> Union[Tuple[str, None], Tuple[None, str]]:
+    ) -> str:
         """ """
         profile_content, err = render_put_file(
             out_path, file_content, self.filename_inside_zip
@@ -394,7 +402,7 @@ class Connection(ConnectionBase):
 
     def _wrapper_fetch_file(
         self, in_path: str
-    ) -> Union[Tuple[str, None], Tuple[None, str]]:
+    ) -> str:
         """ """
         profile_content, err = render_fetch_file(
             in_path, self.filename_inside_zip, self.max_file_size_fetch_file
@@ -404,7 +412,7 @@ class Connection(ConnectionBase):
 
         return profile_content
 
-    def _connect(self):
+    def _connect(self) -> ConnectionBase:
         """Ansible connection override function responsible to establish tunnel from local to host.
         The transportation method for ZPE Cloud is based on API requests, then the connect method
         only establish an authenticated session to be used later."""
@@ -414,7 +422,7 @@ class Connection(ConnectionBase):
             self._create_api_session()
         return self
 
-    def exec_command(self, cmd: str, in_data: bytes = None, sudoable: bool = True):
+    def exec_command(self, cmd: str, in_data: bytes = None, sudoable: bool = True) -> Tuple[bool, str, str]:
         """Ansible connection override function responsible to execute commands on host.
         Commands created by Ansible will be wrapped on a script profile to be executed via ZPE Cloud.
         """
@@ -454,7 +462,7 @@ class Connection(ConnectionBase):
 
         return (0, to_bytes(job_output), b"")
 
-    def put_file(self, in_path, out_path):
+    def put_file(self, in_path: str, out_path: str) -> None:
         """Ansible connection override function responsible to transfer file from local to host.
         Files are compressed, converted to base64, and then wrapped in script profile that is executed on
         host via ZPE Cloud.
@@ -502,7 +510,7 @@ class Connection(ConnectionBase):
         # Delete profile from configuration list
         self._delete_profile(profile_id)
 
-    def fetch_file(self, in_path, out_path):
+    def fetch_file(self, in_path: str, out_path: str) -> None:
         """Ansible connection override function responsible to transfer file from host to local.
         A script profile is used to fetch file from host via ZPE Cloud.
         Once executed in the host, the script will read the file, compress it, convert to base64 and write to stdout.
@@ -539,7 +547,7 @@ class Connection(ConnectionBase):
         if err:
             raise AnsibleError(f"Failed to save file. Error: {err}.")
 
-    def close(self):
+    def close(self) -> None:
         """Ansible connection override function responsible to close tunnel to host.
         A logout from ZPE Cloud API will be performed."""
         self._log_info("[close override]")
@@ -550,7 +558,7 @@ class Connection(ConnectionBase):
                     f"Failed to close session from ZPE Cloud. Error: {err}"
                 )
 
-    def reset(self):
+    def reset(self) -> None:
         """Ansible connection override function responsible to reset tunnel to host.
         A logout, followed by a login on ZPE Cloud API will be performed."""
         self._log_info("[reset override]")
