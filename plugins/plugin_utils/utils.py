@@ -13,6 +13,8 @@ import base64
 import zipfile
 from io import BytesIO
 
+# todo - check if compression algorithm is supported
+
 
 def read_file(in_path: str) -> Union[Tuple[str, None], Tuple[None, str]]:
     data = b""
