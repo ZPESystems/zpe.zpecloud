@@ -1,4 +1,4 @@
-# Ansible Collection - zpe.nodegrid
+# Ansible Collection - zpe.zpecloud
 
 Documentation for the collection.
 
@@ -18,5 +18,6 @@ Note: If you want to reinstall the collection, it is necessary to remove it firs
 - Install docker
 - Install ansible-core
 - Install collection
-- Run ansible-test sanity --docker
+- cd /etc/ansible/collections/ansible_collections/zpe/zpecloud
+- Run ansible-test sanity --docker --requirements requests
 - Run ansible-test units --docker

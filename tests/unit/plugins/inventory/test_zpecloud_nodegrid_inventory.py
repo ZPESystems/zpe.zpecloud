@@ -3,6 +3,7 @@
 
 import os
 import pytest
+import sys
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -12,21 +13,17 @@ from ansible_collections.zpe.zpecloud.plugins.inventory.zpecloud_nodegrid_invent
     InventoryModule,
 )
 
+if not sys.warnoptions:
+    import warnings
+
+    warnings.simplefilter("ignore")
+
 
 @pytest.fixture(scope="module")
 def inventory():
     inventory = InventoryModule()
-    inventory.inventory = MagicMock()
-    inventory.inventory.set_variable = MagicMock()
-
-    inventory.all_clients = MagicMock()
     inventory.get_option = MagicMock()
 
-    inventory._populate_host_vars = MagicMock()
-    inventory._set_composite_vars = MagicMock()
-    inventory._add_host_to_composed_groups = MagicMock()
-    inventory._add_host_to_keyed_groups = MagicMock()
-    # inventory.inventory = InventoryData()
     return inventory
 
 
@@ -119,9 +116,9 @@ def test_create_api_session_read_credentials_from_env_variable(
         "ZPECLOUD_ORGANIZATION": "My organization",
     }
 
-    os.environ['ZPECLOUD_USERNAME'] = _options.get("ZPECLOUD_USERNAME")
-    os.environ['ZPECLOUD_PASSWORD'] = _options.get("ZPECLOUD_PASSWORD")
-    os.environ['ZPECLOUD_ORGANIZATION'] = _options.get("ZPECLOUD_ORGANIZATION")
+    os.environ["ZPECLOUD_USERNAME"] = _options.get("ZPECLOUD_USERNAME")
+    os.environ["ZPECLOUD_PASSWORD"] = _options.get("ZPECLOUD_PASSWORD")
+    os.environ["ZPECLOUD_ORGANIZATION"] = _options.get("ZPECLOUD_ORGANIZATION")
 
     inventory._create_api_session()
 

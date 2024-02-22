@@ -56,6 +56,7 @@ options:
   organization:
     description:
       - Organization name inside ZPE Cloud. Used to switch organization if user has accounts in multiple organizations.
+      - This field is case sensitive.
     type: string
     env:
       - name: ZPECLOUD_ORGANIZATION
@@ -68,13 +69,13 @@ EXAMPLES = r"""
 
 # Sample configuration file for dynamic inventory based on ZPE Cloud. The authentication here is based on user and password.
 plugin: zpe.zpecloud.zpecloud_nodegrid_inventory
-url: https://api.test-zpecloud.com
+url: https://zpecloud.com
 username: myuser@mycompany.com
 password: mysecurepassword
 
 # Sample configuration file for dynamic inventory based on ZPE Cloud. It will authenticate and switch to second company.
 plugin: zpe.zpecloud.zpecloud_nodegrid_inventory
-url: https://api.test-zpecloud.com
+url: https://zpecloud.com
 username: myuser@mycompany.com
 password: mysecurepassword
 organization: "My second organization"
@@ -551,6 +552,7 @@ class InventoryModule(BaseInventoryPlugin):
         self._read_config_data(path)
 
         # get credentials from file and create an API session to ZPE Cloud
+        self.display.v("Authenticating on ZPE Cloud ...")
         self._create_api_session()
 
         # create default groups
@@ -561,13 +563,17 @@ class InventoryModule(BaseInventoryPlugin):
         self.inventory.add_group(ZPECloudDefaultGroups.DEVICE_FAILOVER)
 
         # create groups based on ZPE Cloud groups
+        self.display.v("Fetching groups from ZPE Cloud and creating Ansible groups ...")
         zpecloud_groups = self._parse_groups()
 
         # create groups based on ZPE Cloud sites
+        self.display.v("Fetching sites from ZPE Cloud and creating Ansible groups ...")
         zpecloud_sites = self._parse_sites()
 
         # fetch devices from ZPE Cloud and populate hosts
+        self.display.v("Fetching Nodegrid devices from ZPE Cloud and creating Ansible hosts ...")
         zpecloud_devices = self._parse_devices(zpecloud_groups, zpecloud_sites)
 
         # fetch custom fields from ZPE Cloud
+        self.display.v("Fetching custom fields devices from ZPE Cloud and creating Ansible variables ...")
         self._parse_custom_fields(zpecloud_devices)
