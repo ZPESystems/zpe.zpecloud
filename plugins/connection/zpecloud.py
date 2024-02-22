@@ -18,6 +18,10 @@ description:
   - Uses python requests library to interact with ZPE Cloud API.
 author:
   - Daniel Nesvera (@zpe-dnesvera)
+notes:
+  - Plugin will poll ZPE Cloud API to fetch status of each job until status is successful.
+  - The poll algorithm uses exponential backoff delay, and will timeout after 1 hour.
+  - Plugin will check file size for put, and fetch tasks. The limit is 100Mb.
 requirements:
   - requests
 options:
@@ -121,6 +125,8 @@ from ansible_collections.zpe.zpecloud.plugins.plugin_utils.utils import (
     extract_file,
     exponential_backoff_delay,
 )
+
+from ansible_collections.zpe.zpecloud.plugins.plugin_utils.types import StringError
 
 display = Display()
 
@@ -302,7 +308,7 @@ class Connection(ConnectionBase):
 
         return job_id
 
-    def _wait_job_to_finish(self, job_id: str) -> Tuple[bool, str, str]:
+    def _wait_job_to_finish(self, job_id: str) -> StringError:
         """Loop to verify status of job in ZPE Cloud."""
         request_attempt = 0
         start_time = time.time()
@@ -310,15 +316,18 @@ class Connection(ConnectionBase):
             self._log_info(
                 f"Checking job status for {job_id} - Attempt {request_attempt}"
             )
-
             content, err = self._api_session.get_job(job_id)
             if err:
                 raise AnsibleError(
                     f"Failed to get status for job {job_id}. Err: {err}."
                 )
-
             content = json.loads(content)
-            operation_status = content.get("operation", {}).get("status")
+            operation_status = content.get("operation", {}).get("status", None)
+            if operation_status is None:
+                raise AnsibleError(
+                    f"Failed to get status for job {job_id}."
+                )
+
             operation_output_file_url = content.get("output_file", None)
 
             if (
@@ -340,7 +349,6 @@ class Connection(ConnectionBase):
                 or operation_status == "Timeout"
             ):
                 self._log_info(f"Job {job_id} failed")
-                r = requests.get(operation_output_file_url)
                 return None, f"Job finish with status {operation_status}"
 
             delay = exponential_backoff_delay(
