@@ -324,9 +324,7 @@ class Connection(ConnectionBase):
             content = json.loads(content)
             operation_status = content.get("operation", {}).get("status", None)
             if operation_status is None:
-                raise AnsibleError(
-                    f"Failed to get status for job {job_id}."
-                )
+                raise AnsibleError(f"Failed to get status for job {job_id}.")
 
             operation_output_file_url = content.get("output_file", None)
 
@@ -349,7 +347,24 @@ class Connection(ConnectionBase):
                 or operation_status == "Timeout"
             ):
                 self._log_info(f"Job {job_id} failed")
-                return None, f"Job finish with status {operation_status}"
+
+                if operation_output_file_url and len(operation_output_file_url) > 0:
+                    r = requests.get(operation_output_file_url)
+                    if isinstance(r.content, bytes):
+                        msg = r.content.decode("utf-8")
+                    else:
+                        msg = r.content
+
+                    return (
+                        None,
+                        f"Job finish with status {operation_status}. Output: {msg}.",
+                    )
+
+                else:
+                    return (
+                        None,
+                        f"Job finish with status {operation_status}. Not output content.",
+                    )
 
             delay = exponential_backoff_delay(
                 request_attempt, self.max_delay_wait_job_finish
