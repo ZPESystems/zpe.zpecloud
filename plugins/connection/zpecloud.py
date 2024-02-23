@@ -16,6 +16,7 @@ short_description: This connection plugin allows Ansible to execute tasks on Nod
 description:
   - Run commands or put/fetch files to Nodegrid device enrolled on ZPE Cloud.
   - Uses python requests library to interact with ZPE Cloud API.
+version_added: "1.0"
 author:
   - Daniel Nesvera (@zpe-dnesvera)
 notes:
