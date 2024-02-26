@@ -177,13 +177,6 @@ class Connection(ConnectionBase):
 
         self._log_info("[__init__ override]")
 
-    def update_vars(self, variables) -> None:
-        """Override function used to get variables related to target host."""
-        self.host_serial_number = variables.get("serial_number", None)
-        self.host_zpecloud_id = variables.get("zpecloud_id", None)
-
-        self._log_info("[zpecloud connection - update_vars override]")
-
     def _create_api_session(self) -> None:
         """Get credential information from user and create an authenticate session to ZPE Cloud."""
         url = self.get_option("url", None) or os.environ.get("ZPECLOUD_URL", None)
@@ -427,6 +420,31 @@ class Connection(ConnectionBase):
         # check if session already exists
         if self._api_session is None:
             self._create_api_session()
+
+        if self.host_serial_number is None or self.host_zpecloud_id is None:
+            if self._play_context.remote_addr is None:
+                raise AnsibleConnectionFailure(
+                    "Remote serial number from host was not found."
+                )
+
+            self.host_serial_number = self._play_context.remote_addr
+
+            device, err = self._api_session.fetch_device_by_serial_number(
+                self.host_serial_number
+            )
+            if err:
+                raise AnsibleConnectionFailure(
+                    f"Failed to fetch host ID. Error: {err}."
+                )
+
+            host_id = device.get("id", None)
+            if host_id is None:
+                raise AnsibleConnectionFailure(
+                    f"Failed to find host ID for serial number: {self.host_serial_number}."
+                )
+
+            self.host_zpecloud_id = host_id
+
         return self
 
     def exec_command(

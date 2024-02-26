@@ -10,7 +10,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 import json
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 from urllib.parse import urlparse
 from datetime import datetime
 
@@ -284,3 +284,53 @@ class ZPECloudAPI:
             return None, err
 
         return content, None
+
+    def _search_devices(self, search: str, enrolled: bool = True) -> ListDictError:
+        """Search device list based on some param."""
+        if enrolled:
+            enroll_param = "&enrolled=1"
+        else:
+            enroll_param = "&enrolled=0"
+
+        url = f"{self._url}/device?{enroll_param}&search={search}"
+        content, err = self._get(url=url)
+        if err:
+            return None, err
+
+        return content, None
+
+    def fetch_device_by_serial_number(self, serial_number: str) -> DictError:
+        """Fetch Nodegrid device based on serial number."""
+        def process_response(serial_number: str, content: List[Dict]) -> str:
+            """Check if serial number matches with some device from content list."""
+            content = json.loads(content)
+            device_list = content.get("list", None)
+            if device_list is None:
+                return None
+
+            for device in device_list:
+                device_sn = device.get("serial_number", None)
+                if device_sn == serial_number:
+                    return device
+
+            return None
+
+        # search serial number in enrolled devices
+        content, err = self._search_devices(serial_number, True)
+        if err:
+            return None, err
+
+        device = process_response(serial_number, content)
+        if device:
+            return device, None
+
+        # search serial number in available devices
+        content, err = self._search_devices(serial_number, False)
+        if err:
+            return None, err
+
+        device = process_response(serial_number, content)
+        if device:
+            return device, None
+
+        return None, f"Serial number {serial_number} not found"
