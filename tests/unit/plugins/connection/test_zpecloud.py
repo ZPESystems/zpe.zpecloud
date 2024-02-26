@@ -31,25 +31,81 @@ def connection():
 
 
 # Overwritten methods
-""" Tests for update_vars """
-
-
-def test_store_variables_from_inventory(connection):
-    host_variables = {
-        "hostname": "hostname123",
-        "model": "NSR",
-        "serial_number": "12345654321",
-        "zpecloud_id": "50681",
-    }
-
-    connection.update_vars(host_variables)
-
-    assert connection.host_serial_number == host_variables.get("serial_number")
-    assert connection.host_zpecloud_id == host_variables.get("zpecloud_id")
-
-
-""" Tests for update_vars """
 """ Tests for _connect """
+
+
+def test_connect_empty_remote_address(connection):
+    """Empty remote address must raise error since it is not possible to know target device."""
+    connection._api_session = Mock()
+    connection.host_serial_number = None
+    connection.host_zpecloud_id = None
+    connection._play_context = Mock(remote_addr=None)
+
+    with pytest.raises(AnsibleConnectionFailure):
+        connection._connect()
+
+
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
+def test_connect_fetch_device_error(mock_zpecloud_api, connection):
+    """Fetching device by serial number fails."""
+    connection._api_session = mock_zpecloud_api
+    connection.host_serial_number = None
+    connection.host_zpecloud_id = None
+
+    remote_addr = "123456789"
+    connection._play_context = Mock(remote_addr=remote_addr)
+
+    mock_zpecloud_api.fetch_device_by_serial_number.return_value = (None, "some error")
+
+    with pytest.raises(AnsibleConnectionFailure):
+        connection._connect()
+
+    assert mock_zpecloud_api.fetch_device_by_serial_number.call_count == 1
+    mock_zpecloud_api.fetch_device_by_serial_number.assert_called_with(remote_addr)
+
+
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
+def test_connect_fetch_return_empty_content(mock_zpecloud_api, connection):
+    """Fetching operation returned empty content."""
+    connection._api_session = mock_zpecloud_api
+    connection.host_serial_number = None
+    connection.host_zpecloud_id = None
+
+    remote_addr = "123456789"
+    connection._play_context = Mock(remote_addr=remote_addr)
+
+    mock_zpecloud_api.fetch_device_by_serial_number.return_value = ({}, None)
+
+    with pytest.raises(AnsibleConnectionFailure):
+        connection._connect()
+
+    assert mock_zpecloud_api.fetch_device_by_serial_number.call_count == 1
+    mock_zpecloud_api.fetch_device_by_serial_number.assert_called_with(remote_addr)
+
+
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
+def test_connect_success(mock_zpecloud_api, connection):
+    """Connect working as expected."""
+    connection._api_session = mock_zpecloud_api
+    connection.host_serial_number = None
+    connection.host_zpecloud_id = None
+
+    remote_addr = "123456789"
+    connection._play_context = Mock(remote_addr=remote_addr)
+
+    host_id = "4321"
+    mock_zpecloud_api.fetch_device_by_serial_number.return_value = (
+        {"id": host_id},
+        None,
+    )
+
+    connection._connect()
+
+    assert mock_zpecloud_api.fetch_device_by_serial_number.call_count == 1
+    mock_zpecloud_api.fetch_device_by_serial_number.assert_called_with(remote_addr)
+    assert connection.host_serial_number == remote_addr
+    assert connection.host_zpecloud_id == host_id
+
 
 """ Tests for _connect """
 """ Tests for exec_command """
