@@ -160,9 +160,8 @@ class Connection(ConnectionBase):
         """Initialize ZPE Cloud connection plugin."""
         super(Connection, self).__init__(*args, **kwargs)
         self._api_session = None
-        self.host_zpecloud_id = (
-            None  # id used to reference Nodegrid device in ZPE Cloud
-        )
+        # id used to reference Nodegrid device in ZPE Cloud
+        self.host_zpecloud_id = None
         self.host_serial_number = None
 
         self.timeout_wait_job_finish = 60 * MINUTE  # seconds
