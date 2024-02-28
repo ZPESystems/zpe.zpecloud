@@ -66,9 +66,9 @@ class ActionModule(ActionBase):
         # id used to reference Nodegrid device in ZPE Cloud
         self.host_zpecloud_id = None
         self.host_serial_number = None
-        self.timeout_wait_job_finish = 60 * MINUTE      # in seconds
-        self.max_delay_wait_job_finish = 3 * MINUTE     # in seconds
-        self.timeout_wait_device_online = 60 * MINUTE   # in seconds
+        self.timeout_wait_job_finish = 60 * MINUTE  # in seconds
+        self.max_delay_wait_job_finish = 3 * MINUTE  # in seconds
+        self.timeout_wait_device_online = 60 * MINUTE  # in seconds
         self.max_delay_wait_device_online = 3 * MINUTE  # in seconds
 
     def _create_api_session(self) -> None:
@@ -159,10 +159,10 @@ class ActionModule(ActionBase):
             )
 
         for i in range(3):
-            if next_version_parts[i] > cur_version_parts[i]:
-                return True, None
+            if int(next_version_parts[i]) < int(cur_version_parts[i]):
+                return False, None
 
-        return False, None
+        return True, None
 
     def _get_version_id_from_list(self, version: str, content: List[Dict]) -> str:
         """Get ID from Nodegrid version based on desired version."""
@@ -186,7 +186,9 @@ class ActionModule(ActionBase):
         )
 
         schedule = datetime.utcnow()
-        err = self._api_session.apply_software_upgrade(device_id, profile_id, schedule)[1]
+        err = self._api_session.apply_software_upgrade(device_id, profile_id, schedule)[
+            1
+        ]
         if err:
             raise AnsibleActionFail(
                 f"Failed to apply software upgrade profile {profile_id} to device {self.host_serial_number}. Error: {err}."
@@ -233,9 +235,6 @@ class ActionModule(ActionBase):
             job_schedule_formatted = datetime.strptime(
                 job_schedule, self._api_session.SCHEDULE_FORMAT
             ).isoformat()
-
-            display.v(f"---> schedule: {schedule_formatted}")
-            display.v(f"---> job schedule: {job_schedule_formatted}")
 
             if schedule_formatted == job_schedule_formatted:
                 return job_id, None
@@ -308,35 +307,6 @@ class ActionModule(ActionBase):
 
         return None, "Timeout"
 
-    def _wait_device_status_change(self, device_id: str, status: str) -> BooleanError:
-        """Loop to wait device become online after software upgrade process."""
-        request_attempt = 0
-        start_time = time.time()
-        while (time.time() - start_time) <= self.timeout_wait_job_finish:
-            self._log_info(
-                f"Checking device status - Attempt {request_attempt}"
-            )
-            content, err = self._api_session.get_device_detail(device_id)
-            if err:
-                raise AnsibleActionFail(
-                    f"Failed to get device details. Err: {err}."
-                )
-            content = json.loads(content)
-            device_status = content.get("device_status", None)
-            if device_status is None:
-                raise AnsibleActionFail(f"Failed to get status from device.")
-
-            if device_status == status:
-                return True, None
-
-            delay = exponential_backoff_delay(
-                request_attempt, self.max_delay_wait_job_finish
-            )
-            request_attempt += 1
-            time.sleep(delay)
-
-        return None, "Timeout"
-
     def run(self, tmp=None, task_vars=None):
         self._log_info(f"[run override]")
         if task_vars is None:
@@ -389,6 +359,12 @@ class ActionModule(ActionBase):
 
         display.v(f"current version: {current_version}")
 
+        # Not necessary to proceed if device already has the desired version
+        if version == current_version:
+            result["changed"] = False
+            result["msg"] = f"Device already on Nodegrid version {version}."
+            return result
+
         # Check if is an upgrade or downgrade
         is_upgrade, err = self._is_upgrade(current_version, version)
         if err:
@@ -397,8 +373,12 @@ class ActionModule(ActionBase):
             )
 
         if not is_upgrade and not allow_downgrade:
-            raise AnsibleActionFail("Failed to get device version.")
-            # TODO - may use return instead of raise error
+            result["failed"] = True
+            result["msg"] = (
+                f"Software downgrade is not allowed. Current version: {current_version}. Desired version: {version}."
+                f" Enable allow_downgrade parameter if operation is desired."
+            )
+            return result
 
         # Get NG OS ID based on desired version
         os_versions, err = self._api_session.get_available_os_version()
@@ -423,20 +403,6 @@ class ActionModule(ActionBase):
         if err:
             raise AnsibleActionFail(f"Failed to apply software upgrade. Error: {err}.")
 
-        # Wait device to become offline
-        err = self._wait_device_status_change(self.host_zpecloud_id, "Offline")[1]
-        if err:
-            raise AnsibleActionFail(
-                f"Device did not become offline during the software upgrade. Error: {err}."
-            )
-
-        # Wait device to become online
-        err = self._wait_device_status_change(self.host_zpecloud_id, "Online")[1]
-        if err:
-            raise AnsibleActionFail(
-                f"Device did not reconnect to ZPE Cloud after software upgrade. Error: {err}."
-            )
-
         # Check if device was upgrade by checking its version
         content, err = self._api_session.get_device_detail(self.host_zpecloud_id)
         if err:
@@ -452,10 +418,11 @@ class ActionModule(ActionBase):
         if version_after_op == version:
             result["failed"] = False
             result["changed"] = True
-            result["msg"] = f"Device was upgraded to Nodegrid version {version}"
+            result["msg"] = f"Device was upgraded to Nodegrid version {version}."
+            return result
+
         else:
             result["failed"] = True
             result["changed"] = False
-            result["msg"] = f"Failed to upgrade device to Nodegrid version {version}"
-
-        return result
+            result["msg"] = f"Failed to upgrade device to Nodegrid version {version}."
+            return result
