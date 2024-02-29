@@ -6,10 +6,11 @@
 
 # Make coding more python3-ish, this is required for contributions to Ansible
 from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
 
-DOCUMENTATION = r'''
+DOCUMENTATION = r"""
 ---
 module: software_upgrade
 short_description: Apply software upgrade operations on Nodegrid device enrolled in ZPE Cloud.
@@ -35,9 +36,9 @@ allow_downgrade:
   default: false
 author:
   - Daniel Nesvera (@zpe-dnesvera)
-'''
+"""
 
-EXAMPLES = r'''
+EXAMPLES = r"""
 # Software upgrade without allowing downgrade
 ---
 - name: Software upgrade to NG OS v5.10.10
@@ -50,4 +51,4 @@ EXAMPLES = r'''
   zpe.zpecloud.software_upgrade:
     version: "5.8.15"
     allow_downgrade: true
-'''
+"""

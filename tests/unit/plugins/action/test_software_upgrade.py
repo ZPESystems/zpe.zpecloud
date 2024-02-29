@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from ansible.playbook.play_context import PlayContext
 
-from ansible.errors import AnsibleConnectionFailure, AnsibleError, AnsibleFileNotFound
+from ansible.errors import AnsibleError, AnsibleFileNotFound, AnsibleActionFail
 
 from ansible_collections.zpe.zpecloud.plugins.action.software_upgrade import ActionModule
 
@@ -24,7 +24,7 @@ if not sys.warnoptions:
 @pytest.fixture(scope="module")
 def action():
     pc = PlayContext()
-    action = action(pc, "/dev/null")
+    action = ActionModule(pc, "/dev/null")
     action.get_option = MagicMock()
 
     return action
@@ -269,7 +269,7 @@ def test_create_api_session_missing_required_configuration_raise_error(
 
     action.get_option.side_effect = _get_option_side_effect
 
-    with pytest.raises(AnsibleactionFailure):
+    with pytest.raises(AnsibleActionFail):
         action._create_api_session()
 
 
@@ -352,7 +352,7 @@ def test_create_api_session_zpe_cloud_api_authentication_fail(
 
     action.get_option.side_effect = _get_option_side_effect
 
-    with pytest.raises(AnsibleactionFailure):
+    with pytest.raises(AnsibleActionFail):
         action._create_api_session()
 
     mock_zpe_cloud_api.return_value.authenticate_with_password.assert_called_with(
@@ -380,7 +380,7 @@ def test_create_api_session_switch_organization_fail(mock_zpe_cloud_api, action)
 
     action.get_option.side_effect = _get_option_side_effect
 
-    with pytest.raises(AnsibleactionFailure):
+    with pytest.raises(AnsibleActionFail):
         action._create_api_session()
 
     mock_zpe_cloud_api.return_value.change_organization.assert_called_with(

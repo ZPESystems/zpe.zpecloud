@@ -11,19 +11,14 @@ __metaclass__ = type
 
 from datetime import datetime
 import json
-import os
 import re
 import requests
 import time
 from typing import List, Dict
 
 from ansible.errors import AnsibleActionFail
-from ansible.plugins.action import ActionBase
 from ansible.utils.display import Display
 
-from ansible_collections.zpe.zpecloud.plugins.plugin_utils.zpecloud_api import (
-    ZPECloudAPI,
-)
 from ansible_collections.zpe.zpecloud.plugins.plugin_utils.utils import (
     exponential_backoff_delay,
 )
@@ -32,20 +27,23 @@ from ansible_collections.zpe.zpecloud.plugins.plugin_utils.types import (
     BooleanError,
 )
 
+from ansible_collections.zpe.zpecloud.plugins.plugin_utils.zpecloud_action_base import (
+    ZPECloudActionBase,
+)
 
 display = Display()
 
 MINUTE = 60  # seconds
 
 
-class ActionModule(ActionBase):
+class ActionModule(ZPECloudActionBase):
     """Action module used to apply software upgrade for Nodegrid devices over ZPE Cloud API."""
 
     TRANSFERS_FILES = False
     _VALID_ARGS = frozenset(("version", "allow_downgrade"))
     _requires_connection = False
 
-    VERSION_REGEX = "[0-9]+\.[0-9]+\.[0-9]+"
+    VERSION_REGEX = r"[0-9]+\.[0-9]+\.[0-9]+"
 
     def _log_info(self, message: str) -> None:
         """Log information."""
@@ -61,65 +59,11 @@ class ActionModule(ActionBase):
 
     def __init__(self, *args, **kwargs):
         super(ActionModule, self).__init__(*args, **kwargs)
-        self._api_session = None
 
-        # id used to reference Nodegrid device in ZPE Cloud
-        self.host_zpecloud_id = None
-        self.host_serial_number = None
         self.timeout_wait_job_finish = 60 * MINUTE  # in seconds
         self.max_delay_wait_job_finish = 3 * MINUTE  # in seconds
         self.timeout_wait_device_online = 60 * MINUTE  # in seconds
         self.max_delay_wait_device_online = 3 * MINUTE  # in seconds
-
-    def _create_api_session(self) -> None:
-        """Get credential information from user and create an authenticate session to ZPE Cloud."""
-        connection_vars = self._connection._options
-        if connection_vars is None:
-            raise AnsibleActionFail("Connection options are not defined.")
-
-        url = connection_vars.get("url", None) or os.environ.get("ZPECLOUD_URL", None)
-
-        # default for url
-        if url is None:
-            url = "https://zpecloud.com"
-
-        username = connection_vars.get("username", None) or os.environ.get(
-            "ZPECLOUD_USERNAME", None
-        )
-        if username is None:
-            raise AnsibleActionFail(
-                "Could not retrieve ZPE Cloud username from plugin configuration or environment."
-            )
-
-        password = connection_vars.get("password", None) or os.environ.get(
-            "ZPECLOUD_PASSWORD", None
-        )
-        if password is None:
-            raise AnsibleActionFail(
-                "Could not retrieve ZPE Cloud password from plugin configuration or environment."
-            )
-
-        organization = connection_vars.get("organization", None) or os.environ.get(
-            "ZPECLOUD_ORGANIZATION", None
-        )
-
-        try:
-            self._api_session = ZPECloudAPI(url)
-        except Exception as err:
-            raise AnsibleActionFail(
-                f"Failed to authenticate on ZPE Cloud. Error: {err}."
-            )
-
-        result, err = self._api_session.authenticate_with_password(username, password)
-        if err:
-            raise AnsibleActionFail(
-                f"Failed to authenticate on ZPE Cloud. Error: {err}."
-            )
-
-        if organization:
-            result, err = self._api_session.change_organization(organization)
-            if err:
-                raise AnsibleActionFail(f"Failed to switch organization. Error: {err}.")
 
     def _validate_version(self, version: str) -> bool:
         """Validate if version string matches expected format."""
@@ -308,7 +252,7 @@ class ActionModule(ActionBase):
         return None, "Timeout"
 
     def run(self, tmp=None, task_vars=None):
-        self._log_info(f"[run override]")
+        self._log_info("[run override]")
         if task_vars is None:
             task_vars = dict()
 
@@ -334,7 +278,7 @@ class ActionModule(ActionBase):
         self.host_serial_number = self._play_context.remote_addr
 
         # Create API session for ZPE Cloud
-        self._log_info(f"Authenticating on ZPE Cloud ...")
+        self._log_info("Authenticating on ZPE Cloud ...")
         self._create_api_session()
 
         # Get device id
