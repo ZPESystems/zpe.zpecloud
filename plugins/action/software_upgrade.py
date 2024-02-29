@@ -320,7 +320,7 @@ class ActionModule(ZPECloudActionBase):
             )
 
         if not is_upgrade and not allow_downgrade:
-            result["failed"] = True
+            result["skipped"] = True
             result["msg"] = (
                 f"Software downgrade is not allowed. Current version: {current_version}. Desired version: {version}."
                 f" Enable allow_downgrade parameter if operation is desired."

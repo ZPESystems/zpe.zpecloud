@@ -15,16 +15,15 @@ DOCUMENTATION = r"""
 module: software_upgrade
 short_description: Apply software upgrade operations on Nodegrid device enrolled in ZPE Cloud.
 description:
-  - Apply software upgrade operations on Nodegrid devices enrolled in ZPE Cloud.
-  - It is possible to perform software downgrade by setting option allow_downgrade to True.
+  - Apply software upgrade operation on Nodegrid devices enrolled in ZPE Cloud.
+  - For software downgrade, it is necessary to set option allow_downgrade to True.
   - By default, module will fail if a device will be downgraded to prevent device from factory reset.
 version_added: "1.0"
 options:
   version:
     description:
-      - Target Nodegrid OS version for upgrade.
-      - If omitted, fail will simply bail out with a generic message.
-      - Nodegrid OS version is pattern is <major>.<minor>.<patch>
+      - Desired Nodegrid OS version for upgrade.
+      - Nodegrid OS version follows pattern <major>.<minor>.<patch>
     type: str
     required: true
 allow_downgrade:
