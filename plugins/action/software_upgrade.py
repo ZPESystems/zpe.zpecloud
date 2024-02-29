@@ -171,8 +171,6 @@ class ActionModule(ZPECloudActionBase):
             raise AnsibleActionFail("Failed to get list for job search.")
 
         for job in job_list:
-            display.v("---> job:")
-            display.v(str(job))
             job_schedule = job.get("schedule", None)
             job_id = job.get("id", None)
             if job_schedule is None or job_id is None:
@@ -272,9 +270,6 @@ class ActionModule(ZPECloudActionBase):
                 "NG OS version was not provided, or does not match the expected format."
             )
 
-        display.v(f"desired version: {version}")
-        display.v(f"allow downgrade: {allow_downgrade}")
-
         if self._play_context.remote_addr is None:
             raise AnsibleActionFail("Remote serial number from host was not found.")
 
@@ -303,8 +298,6 @@ class ActionModule(ZPECloudActionBase):
             raise AnsibleActionFail("Failed to get current device version.")
 
         current_version = self._extract_version(current_version)
-
-        display.v(f"current version: {current_version}")
 
         # Not necessary to proceed if device already has the desired version
         if version == current_version:
@@ -338,12 +331,8 @@ class ActionModule(ZPECloudActionBase):
         if os_version_id is None:
             raise AnsibleActionFail("Failed to get Nodegrid OS version ID.")
 
-        display.v(f"desired version id: {os_version_id}")
-
         # Apply software upgrade profile
         job_id = self._apply_software_upgrade(self.host_zpecloud_id, os_version_id)
-
-        display.v(f"job id found: {job_id}")
 
         # Check software upgrade job status
         job_output, err = self._wait_job_to_finish(job_id)

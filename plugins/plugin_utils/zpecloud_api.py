@@ -341,7 +341,9 @@ class ZPECloudAPI:
     def get_available_os_version(self) -> ListDictError:
         os_version = []
         while True:
-            offset_url = f"{self._url}/release?offset={len(os_version)}&limit={self.query_limit}"
+            offset_url = (
+                f"{self._url}/release?offset={len(os_version)}&limit={self.query_limit}"
+            )
             content, err = self._get(url=offset_url)
             if err:
                 return None, err
@@ -367,7 +369,7 @@ class ZPECloudAPI:
         payload = {
             "schedule": schedule.strftime(self.SCHEDULE_FORMAT),
             "is_first_connection": "false",
-            "force_boot_mode": "false"
+            "force_boot_mode": "false",
         }
 
         content, err = self._post(
