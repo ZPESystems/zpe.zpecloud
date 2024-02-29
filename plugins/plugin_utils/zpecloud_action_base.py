@@ -32,17 +32,17 @@ class ZPECloudActionBase(ActionBase):
 
     def _create_api_session(self) -> None:
         """Get credential information from user and create an authenticate session to ZPE Cloud."""
-        connection_vars = self._connection._options
-        if connection_vars is None:
+        connection = self._connection
+        if connection is None:
             raise AnsibleActionFail("Connection options are not defined.")
 
-        url = connection_vars.get("url", None) or os.environ.get("ZPECLOUD_URL", None)
+        url = connection.get_option("url", None) or os.environ.get("ZPECLOUD_URL", None)
 
         # default for url
         if url is None:
             url = "https://zpecloud.com"
 
-        username = connection_vars.get("username", None) or os.environ.get(
+        username = connection.get_option("username", None) or os.environ.get(
             "ZPECLOUD_USERNAME", None
         )
         if username is None:
@@ -50,7 +50,7 @@ class ZPECloudActionBase(ActionBase):
                 "Could not retrieve ZPE Cloud username from plugin configuration or environment."
             )
 
-        password = connection_vars.get("password", None) or os.environ.get(
+        password = connection.get_option("password", None) or os.environ.get(
             "ZPECLOUD_PASSWORD", None
         )
         if password is None:
@@ -58,7 +58,7 @@ class ZPECloudActionBase(ActionBase):
                 "Could not retrieve ZPE Cloud password from plugin configuration or environment."
             )
 
-        organization = connection_vars.get("organization", None) or os.environ.get(
+        organization = connection.get_option("organization", None) or os.environ.get(
             "ZPECLOUD_ORGANIZATION", None
         )
 
