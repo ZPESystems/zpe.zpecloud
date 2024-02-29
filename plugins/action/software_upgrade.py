@@ -14,7 +14,7 @@ import json
 import re
 import requests
 import time
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from ansible.errors import AnsibleActionFail
 from ansible.utils.display import Display
@@ -76,14 +76,17 @@ class ActionModule(ZPECloudActionBase):
         else:
             return False
 
-    def _extract_version(self, version: str) -> str:
+    def _extract_version(self, version: str) -> Optional[str]:
         """Extract expected version format from string.
         ZPE Cloud stores version as v5.10.10 (Jan 15 2024 - 07:45:20).
         Software upgrade action expects 5.10.10."""
         pattern = re.compile(self.VERSION_REGEX)
         search_res = pattern.search(version)
 
-        return search_res.group()
+        if search_res:
+            return search_res.group()
+        else:
+            return None
 
     def _is_upgrade(self, cur_version: str, next_version: str) -> BooleanError:
         """Check if operation is a software upgrade, or downgrade, based on current and desired versions.
