@@ -40,6 +40,7 @@ def action():
     )
     action._connection = MagicMock()
     action._api_session = MagicMock()
+    action._play_context = Mock()
 
     return action
 
@@ -115,6 +116,7 @@ def test_is_upgrade_for_wrong_format(current, next, action):
         ("5.0.0", "6.0.0", True),
         ("5.0.0", "5.1.0", True),
         ("5.0.0", "5.0.1", True),
+        ("5.10.10", "6.0.3", True),
         ("5.1.1", "4.1.1", False),
         ("5.1.1", "5.0.1", False),
         ("5.1.1", "5.1.0", False),
@@ -124,7 +126,7 @@ def test_is_upgrade(current, next, expected, action):
     """Verify if version extraction is right."""
     res, err = action._is_upgrade(current, next)
 
-    assert res == expected
+    assert res == expected, f"Upgrade from {current} to {next} - Is upgrade? {res}"
     assert err is None
 
 
@@ -241,6 +243,74 @@ def test_wait_job_to_finish_job_ansible_timeout(mock_time, action):
 
 """ Tests for _wait_job_to_finish """
 """ Tests for run """
+
+def test_run_empty_args(action):
+    """Task does not have parameters."""
+    action._task.args.get.side_effect = None
+
+    with pytest.raises(AnsibleActionFail):
+        action.run()
+
+
+def test_run_wrong_version_format(action):
+    """User type wrong version format."""
+    _options = {
+        "version": "6.0",
+        "allow_downgrade": False
+    }
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+    action._play_context.remote_addr.return_value = "1234"
+
+    with pytest.raises(AnsibleActionFail):
+        action.run()
+
+def test_run_remote_addr_not_found(action):
+    """Host does not have remote address."""
+    _options = {
+        "version": "6.0.0",
+        "allow_downgrade": False
+    }
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+    action._play_context.remote_addr.return_value = None
+
+    with pytest.raises(AnsibleActionFail):
+        action.run()
+
+def run_failed_get_device_id(action):
+    """Failed to get device ID while search by serial number."""
+    _options = {
+        "version": "6.0.0",
+        "allow_downgrade": False
+    }
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+
+    remote_addr = "1234"
+    action._play_context.remote_addr.return_value = remote_addr
+
+    action._create_api_session = Mock()
+    action._api_session.fetch_device_by_serial_number.return_value = (
+        None,
+        "some error"
+    )
+
+    with pytest.raises(AnsibleActionFail):
+        action.run()
+
+    print(action.host_serial_number)
+
+    assert action.host_serial_number == remote_addr
 
 
 """ Tests for run """

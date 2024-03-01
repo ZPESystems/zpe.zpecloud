@@ -106,10 +106,15 @@ class ActionModule(ZPECloudActionBase):
             )
 
         for i in range(3):
-            if int(next_version_parts[i]) < int(cur_version_parts[i]):
+            cur_part = int(cur_version_parts[i])
+            next_part = int(next_version_parts[i])
+
+            if next_part > cur_part:
+                return True, None
+            elif next_part < cur_part:
                 return False, None
 
-        return True, None
+        return False, None
 
     def _get_version_id_from_list(self, version: str, content: List[Dict]) -> str:
         """Get ID from Nodegrid version based on desired version."""
@@ -269,6 +274,8 @@ class ActionModule(ZPECloudActionBase):
             raise AnsibleActionFail(
                 "NG OS version was not provided, or does not match the expected format."
             )
+
+        self.host_serial_number = "blahblah"
 
         if self._play_context.remote_addr is None:
             raise AnsibleActionFail("Remote serial number from host was not found.")
