@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 # Copyright (c) 2024, ZPE Systems <zpesystems.com>
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
@@ -12,7 +9,6 @@ __metaclass__ = type
 from datetime import datetime
 import json
 import re
-import requests
 import time
 from typing import List, Dict, Optional
 
@@ -209,20 +205,10 @@ class ActionModule(ZPECloudActionBase):
             if operation_status is None:
                 raise AnsibleActionFail(f"Failed to get status for job {job_id}.")
 
-            operation_output_file_url = content.get("output_file", None)
-
-            if (
-                operation_status == "Successful"
-                and operation_output_file_url
-                and len(operation_output_file_url) > 0
-            ):
+            if operation_status == "Successful":
                 self._log_info(f"Job {job_id} finished successfully")
-                r = requests.get(operation_output_file_url)
 
-                if isinstance(r.content, bytes):
-                    return r.content.decode("utf-8"), None
-                else:
-                    return r.content, None
+                return "Successful", None
 
             elif (
                 operation_status == "Failed"
@@ -231,23 +217,10 @@ class ActionModule(ZPECloudActionBase):
             ):
                 self._log_info(f"Job {job_id} failed")
 
-                if operation_output_file_url and len(operation_output_file_url) > 0:
-                    r = requests.get(operation_output_file_url)
-                    if isinstance(r.content, bytes):
-                        msg = r.content.decode("utf-8")
-                    else:
-                        msg = r.content
-
-                    return (
-                        None,
-                        f"Job finish with status {operation_status}. Output: {msg}.",
-                    )
-
-                else:
-                    return (
-                        None,
-                        f"Job finish with status {operation_status}. Not output content.",
-                    )
+                return (
+                    None,
+                    f"Job finish with status {operation_status}.",
+                )
 
             delay = exponential_backoff_delay(
                 request_attempt, self.max_delay_wait_job_finish
