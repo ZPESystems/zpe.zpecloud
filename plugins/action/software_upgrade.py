@@ -268,14 +268,19 @@ class ActionModule(ZPECloudActionBase):
 
         result = super(ActionModule, self).run(tmp, task_vars)
         del tmp  # tmp no longer has any effect
+        result["changed"] = False
+        result["ok"] = False
+        result["failed"] = False
+        result["skipped"] = False
+
+        if version is None:
+            raise AnsibleActionFail("NG OS version was not provided.")
 
         # Validate parameters
         if not self._validate_version(version):
-            raise AnsibleActionFail(
-                "NG OS version was not provided, or does not match the expected format."
-            )
+            raise AnsibleActionFail("NG OS does not match the expected format.")
 
-        self.host_serial_number = "blahblah"
+        self.blah = self._play_context.remote_addr
 
         if self._play_context.remote_addr is None:
             raise AnsibleActionFail("Remote serial number from host was not found.")
@@ -305,10 +310,14 @@ class ActionModule(ZPECloudActionBase):
             raise AnsibleActionFail("Failed to get current device version.")
 
         current_version = self._extract_version(current_version)
+        if current_version is None:
+            raise AnsibleActionFail(
+                "Nodegrid version does not match the expected format."
+            )
 
         # Not necessary to proceed if device already has the desired version
         if version == current_version:
-            result["changed"] = False
+            result["ok"] = True
             result["msg"] = f"Device already on Nodegrid version {version}."
             return result
 
@@ -320,7 +329,7 @@ class ActionModule(ZPECloudActionBase):
             )
 
         if not is_upgrade and not allow_downgrade:
-            result["skipped"] = True
+            result["failed"] = True
             result["msg"] = (
                 f"Software downgrade is not allowed. Current version: {current_version}. Desired version: {version}."
                 f" Enable allow_downgrade parameter if operation is desired."
@@ -342,7 +351,7 @@ class ActionModule(ZPECloudActionBase):
         job_id = self._apply_software_upgrade(self.host_zpecloud_id, os_version_id)
 
         # Check software upgrade job status
-        job_output, err = self._wait_job_to_finish(job_id)
+        err = self._wait_job_to_finish(job_id)[1]
         if err:
             raise AnsibleActionFail(f"Failed to apply software upgrade. Error: {err}.")
 
@@ -353,19 +362,17 @@ class ActionModule(ZPECloudActionBase):
 
         content = json.loads(content)
         version_after_op = content.get("version", None)
-        if current_version is None:
+        if version_after_op is None:
             raise AnsibleActionFail("Failed to get current device version.")
 
         version_after_op = self._extract_version(version_after_op)
 
         if version_after_op == version:
-            result["failed"] = False
             result["changed"] = True
             result["msg"] = f"Device was upgraded to Nodegrid version {version}."
             return result
 
         else:
             result["failed"] = True
-            result["changed"] = False
             result["msg"] = f"Failed to upgrade device to Nodegrid version {version}."
             return result

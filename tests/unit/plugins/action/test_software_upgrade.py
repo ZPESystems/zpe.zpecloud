@@ -41,6 +41,8 @@ def action():
     action._connection = MagicMock()
     action._api_session = MagicMock()
     action._play_context = Mock()
+    action._api_session = Mock()
+    action._create_api_session = Mock()
 
     return action
 
@@ -244,20 +246,30 @@ def test_wait_job_to_finish_job_ansible_timeout(mock_time, action):
 """ Tests for _wait_job_to_finish """
 """ Tests for run """
 
-def test_run_empty_args(action):
-    """Task does not have parameters."""
-    action._task.args.get.side_effect = None
 
-    with pytest.raises(AnsibleActionFail):
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_empty_args(zpecloud_action_base_run, action):
+    """Task does not have parameters."""
+    zpecloud_action_base_run.return_value = {}
+
+    action._task.args.get.return_value = None
+
+    with pytest.raises(AnsibleActionFail) as err:
         action.run()
 
+    assert str(err.value) == "NG OS version was not provided."
 
-def test_run_wrong_version_format(action):
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_wrong_version_format(zpecloud_action_base_run, action):
     """User type wrong version format."""
-    _options = {
-        "version": "6.0",
-        "allow_downgrade": False
-    }
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "6.0", "allow_downgrade": False}
 
     def _get_option_side_effect(*args):
         return _options.get(*args)
@@ -265,31 +277,41 @@ def test_run_wrong_version_format(action):
     action._task.args.get.side_effect = _get_option_side_effect
     action._play_context.remote_addr.return_value = "1234"
 
-    with pytest.raises(AnsibleActionFail):
+    with pytest.raises(AnsibleActionFail) as err:
         action.run()
 
-def test_run_remote_addr_not_found(action):
+    assert str(err.value) == "NG OS does not match the expected format."
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_remote_addr_not_found(zpecloud_action_base_run, action):
     """Host does not have remote address."""
-    _options = {
-        "version": "6.0.0",
-        "allow_downgrade": False
-    }
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "6.0.0", "allow_downgrade": False}
 
     def _get_option_side_effect(*args):
         return _options.get(*args)
 
     action._task.args.get.side_effect = _get_option_side_effect
-    action._play_context.remote_addr.return_value = None
+    action._play_context.remote_addr = None
 
-    with pytest.raises(AnsibleActionFail):
+    with pytest.raises(AnsibleActionFail) as err:
         action.run()
 
-def run_failed_get_device_id(action):
-    """Failed to get device ID while search by serial number."""
-    _options = {
-        "version": "6.0.0",
-        "allow_downgrade": False
-    }
+    assert str(err.value) == "Remote serial number from host was not found."
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_failed_fetch_device(zpecloud_action_base_run, action):
+    """Failed to search device by serial number."""
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "6.0.0", "allow_downgrade": False}
 
     def _get_option_side_effect(*args):
         return _options.get(*args)
@@ -297,20 +319,559 @@ def run_failed_get_device_id(action):
     action._task.args.get.side_effect = _get_option_side_effect
 
     remote_addr = "1234"
-    action._play_context.remote_addr.return_value = remote_addr
+    action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
     action._api_session.fetch_device_by_serial_number.return_value = (
         None,
-        "some error"
+        "some error",
     )
 
-    with pytest.raises(AnsibleActionFail):
+    with pytest.raises(AnsibleActionFail) as err:
         action.run()
 
-    print(action.host_serial_number)
+    assert action.host_serial_number == remote_addr
+    # assert action._api_session.fetch_device_by_serial_number.assert_called_with(
+    #    remote_addr
+    # )
+    assert "Failed to fetch device in ZPE Cloud." in str(err.value)
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_failed_get_device_id(zpecloud_action_base_run, action):
+    """Failed to get device ID while search by serial number."""
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "6.0.0", "allow_downgrade": False}
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+
+    remote_addr = "1234"
+    action._play_context.remote_addr = remote_addr
+
+    action._create_api_session = Mock()
+
+    action._api_session.fetch_device_by_serial_number.return_value = ({}, None)
+
+    with pytest.raises(AnsibleActionFail) as err:
+        action.run()
 
     assert action.host_serial_number == remote_addr
+    # assert action._api_session.fetch_device_by_serial_number.assert_called_with(
+    #    remote_addr
+    # )
+    assert str(err.value) == "Failed to get device ID."
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_failed_get_device_version(zpecloud_action_base_run, action):
+    """Failed to get device version while search by serial number."""
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "6.0.0", "allow_downgrade": False}
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+
+    remote_addr = "1234"
+    action._play_context.remote_addr = remote_addr
+
+    action._create_api_session = Mock()
+
+    device_id = "567"
+    action._api_session.fetch_device_by_serial_number.return_value = (
+        {"id": device_id},
+        None,
+    )
+
+    with pytest.raises(AnsibleActionFail) as err:
+        action.run()
+
+    assert action.host_serial_number == remote_addr
+    # assert action._api_session.fetch_device_by_serial_number.assert_called_with(
+    #    remote_addr
+    # )
+    assert str(err.value) == "Failed to get current device version."
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_same_version_return_ok(zpecloud_action_base_run, action):
+    """Device already running desired version, then finish with OK."""
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "6.0.0", "allow_downgrade": False}
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+
+    remote_addr = "1234"
+    action._play_context.remote_addr = remote_addr
+
+    action._create_api_session = Mock()
+
+    device_id = "567"
+    device_version = "6.0.0"
+    action._api_session.fetch_device_by_serial_number.return_value = (
+        {"id": device_id, "version": device_version},
+        None,
+    )
+
+    result = action.run()
+
+    assert action.host_serial_number == remote_addr
+    # assert action._api_session.fetch_device_by_serial_number.assert_called_with(
+    #    action.host_serial_number
+    # )
+    assert result["ok"] is True
+    assert f"Device already on Nodegrid version {device_version}" in result["msg"]
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_get_wrong_version(zpecloud_action_base_run, action):
+    """Got wrong format of version."""
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "6.0.0", "allow_downgrade": False}
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+
+    remote_addr = "1234"
+    action._play_context.remote_addr = remote_addr
+
+    action._create_api_session = Mock()
+
+    device_id = "567"
+    device_version = "6.1"
+    action._api_session.fetch_device_by_serial_number.return_value = (
+        {"id": device_id, "version": device_version},
+        None,
+    )
+
+    with pytest.raises(AnsibleActionFail) as err:
+        action.run()
+
+    assert action.host_serial_number == remote_addr
+    assert str(err.value) == "Nodegrid version does not match the expected format."
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_downgrade_not_allowed(zpecloud_action_base_run, action):
+    """User requested a downgrade, but did not set flag to true."""
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "6.0.0", "allow_downgrade": False}
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+
+    remote_addr = "1234"
+    action._play_context.remote_addr = remote_addr
+
+    action._create_api_session = Mock()
+
+    device_id = "567"
+    device_version = "6.1.0"
+    action._api_session.fetch_device_by_serial_number.return_value = (
+        {"id": device_id, "version": device_version},
+        None,
+    )
+
+    result = action.run()
+
+    assert action.host_serial_number == remote_addr
+    assert result["failed"] is True
+    assert "Software downgrade is not allowed." in result["msg"]
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_fail_get_release(zpecloud_action_base_run, action):
+    """Failed to get Nodegrid versions."""
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "6.0.0", "allow_downgrade": False}
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+
+    remote_addr = "1234"
+    action._play_context.remote_addr = remote_addr
+
+    action._create_api_session = Mock()
+
+    device_id = "567"
+    device_version = "5.10.0"
+    action._api_session.fetch_device_by_serial_number.return_value = (
+        {"id": device_id, "version": device_version},
+        None,
+    )
+
+    action._api_session.get_available_os_version.return_value = (
+        None,
+        "some error",
+    )
+
+    with pytest.raises(AnsibleActionFail) as err:
+        action.run()
+
+    assert action.host_serial_number == remote_addr
+    assert str(err.value) == "Failed to get Nodegrid OS versions from ZPE Cloud."
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_not_release_match(zpecloud_action_base_run, action):
+    """Desired version as not found on zpe cloud."""
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "6.0.0", "allow_downgrade": False}
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+
+    remote_addr = "1234"
+    action._play_context.remote_addr = remote_addr
+
+    action._create_api_session = Mock()
+
+    device_id = "567"
+    device_version = "5.100.0"
+    action._api_session.fetch_device_by_serial_number.return_value = (
+        {"id": device_id, "version": device_version},
+        None,
+    )
+
+    action._api_session.get_available_os_version.return_value = ([], None)
+
+    with pytest.raises(AnsibleActionFail) as err:
+        action.run()
+
+    assert action.host_serial_number == remote_addr
+    assert str(err.value) == "Failed to get Nodegrid OS version ID."
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_wait_job_failed(zpecloud_action_base_run, action):
+    """Software upgrade job failed."""
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "5.10.10", "allow_downgrade": False}
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+
+    remote_addr = "1234"
+    action._play_context.remote_addr = remote_addr
+
+    action._create_api_session = Mock()
+
+    device_id = "567"
+    device_version = "5.9.10"
+    action._api_session.fetch_device_by_serial_number.return_value = (
+        {"id": device_id, "version": device_version},
+        None,
+    )
+
+    os_name = "v5.10.10 (Jan 15 2024 - 07:45:20)"
+    os_id = "12"
+    action._api_session.get_available_os_version.return_value = (
+        [{"id": os_id, "name": os_name}],
+        None,
+    )
+
+    job_id = "999"
+    action._apply_software_upgrade = Mock()
+    action._apply_software_upgrade.return_value = job_id
+
+    action._wait_job_to_finish = Mock()
+    action._wait_job_to_finish.return_value = (None, "some error")
+
+    with pytest.raises(AnsibleActionFail) as err:
+        action.run()
+
+    assert action.host_serial_number == remote_addr
+    assert "Failed to apply software upgrade." in str(err.value)
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_failed_get_detail(zpecloud_action_base_run, action):
+    """Failed to get detail of job."""
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "5.10.10", "allow_downgrade": False}
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+
+    remote_addr = "1234"
+    action._play_context.remote_addr = remote_addr
+
+    action._create_api_session = Mock()
+
+    device_id = "567"
+    device_version = "5.9.10"
+    action._api_session.fetch_device_by_serial_number.return_value = (
+        {"id": device_id, "version": device_version},
+        None,
+    )
+
+    os_name = "v5.10.10 (Jan 15 2024 - 07:45:20)"
+    os_id = "12"
+    action._api_session.get_available_os_version.return_value = (
+        [{"id": os_id, "name": os_name}],
+        None,
+    )
+
+    job_id = "999"
+    action._apply_software_upgrade = Mock()
+    action._apply_software_upgrade.return_value = job_id
+
+    action._wait_job_to_finish = Mock()
+    action._wait_job_to_finish.return_value = ("Success", None)
+
+    action._api_session.get_device_detail.return_value = (None, "some error")
+
+    with pytest.raises(AnsibleActionFail) as err:
+        action.run()
+
+    assert action.host_serial_number == remote_addr
+    assert "Failed to get device detail." in str(err.value)
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_failed_get_device_version_detail(zpecloud_action_base_run, action):
+    """Device version not found on detail content."""
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "5.10.10", "allow_downgrade": False}
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+
+    remote_addr = "1234"
+    action._play_context.remote_addr = remote_addr
+
+    action._create_api_session = Mock()
+
+    device_id = "567"
+    device_version = "5.9.10"
+    action._api_session.fetch_device_by_serial_number.return_value = (
+        {"id": device_id, "version": device_version},
+        None,
+    )
+
+    os_name = "v5.10.10 (Jan 15 2024 - 07:45:20)"
+    os_id = "12"
+    action._api_session.get_available_os_version.return_value = (
+        [{"id": os_id, "name": os_name}],
+        None,
+    )
+
+    job_id = "999"
+    action._apply_software_upgrade = Mock()
+    action._apply_software_upgrade.return_value = job_id
+
+    action._wait_job_to_finish = Mock()
+    action._wait_job_to_finish.return_value = ("Success", None)
+
+    action._api_session.get_device_detail.return_value = ("{}", None)
+
+    with pytest.raises(AnsibleActionFail) as err:
+        action.run()
+
+    assert action.host_serial_number == remote_addr
+    assert "ailed to get current device version." in str(err.value)
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_ugprade_fail(zpecloud_action_base_run, action):
+    """Software upgrade failed and device keeps with same version."""
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "5.10.10", "allow_downgrade": False}
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+
+    remote_addr = "1234"
+    action._play_context.remote_addr = remote_addr
+
+    action._create_api_session = Mock()
+
+    device_id = "567"
+    device_version = "5.9.10"
+    action._api_session.fetch_device_by_serial_number.return_value = (
+        {"id": device_id, "version": device_version},
+        None,
+    )
+
+    os_name = "v5.10.10 (Jan 15 2024 - 07:45:20)"
+    os_id = "12"
+    action._api_session.get_available_os_version.return_value = (
+        [{"id": os_id, "name": os_name}],
+        None,
+    )
+
+    job_id = "999"
+    action._apply_software_upgrade = Mock()
+    action._apply_software_upgrade.return_value = job_id
+
+    action._wait_job_to_finish = Mock()
+    action._wait_job_to_finish.return_value = ("Success", None)
+
+    action._api_session.get_device_detail.return_value = ('{"version": "5.9.10"}', None)
+
+    result = action.run()
+
+    assert action.host_serial_number == remote_addr
+    assert result["failed"] is True
+    assert "Failed to upgrade device to Nodegrid version" in result["msg"]
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_ugprade_succeed(zpecloud_action_base_run, action):
+    """Software upgrade succeed."""
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "5.10.10", "allow_downgrade": False}
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+
+    remote_addr = "1234"
+    action._play_context.remote_addr = remote_addr
+
+    action._create_api_session = Mock()
+
+    device_id = "567"
+    device_version = "5.9.10"
+    action._api_session.fetch_device_by_serial_number.return_value = (
+        {"id": device_id, "version": device_version},
+        None,
+    )
+
+    os_name = "v5.10.10 (Jan 15 2024 - 07:45:20)"
+    os_id = "12"
+    action._api_session.get_available_os_version.return_value = (
+        [{"id": os_id, "name": os_name}],
+        None,
+    )
+
+    job_id = "999"
+    action._apply_software_upgrade = Mock()
+    action._apply_software_upgrade.return_value = job_id
+
+    action._wait_job_to_finish = Mock()
+    action._wait_job_to_finish.return_value = ("Success", None)
+
+    action._api_session.get_device_detail.return_value = (
+        '{"version": "5.10.10"}',
+        None,
+    )
+
+    result = action.run()
+
+    assert action.host_serial_number == remote_addr
+    assert result["changed"] is True
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
+def test_run_downgrade_succeed(zpecloud_action_base_run, action):
+    """Software downgrade succeed."""
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "4.10.10", "allow_downgrade": True}
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+
+    remote_addr = "1234"
+    action._play_context.remote_addr = remote_addr
+
+    action._create_api_session = Mock()
+
+    device_id = "567"
+    device_version = "5.9.10"
+    action._api_session.fetch_device_by_serial_number.return_value = (
+        {"id": device_id, "version": device_version},
+        None,
+    )
+
+    os_name = "v4.10.10 (Jan 15 2024 - 07:45:20)"
+    os_id = "12"
+    action._api_session.get_available_os_version.return_value = (
+        [{"id": os_id, "name": os_name}],
+        None,
+    )
+
+    job_id = "999"
+    action._apply_software_upgrade = Mock()
+    action._apply_software_upgrade.return_value = job_id
+
+    action._wait_job_to_finish = Mock()
+    action._wait_job_to_finish.return_value = ("Success", None)
+
+    action._api_session.get_device_detail.return_value = (
+        '{"version": "4.10.10"}',
+        None,
+    )
+
+    result = action.run()
+
+    assert action.host_serial_number == remote_addr
+    assert result["changed"] is True
 
 
 """ Tests for run """
