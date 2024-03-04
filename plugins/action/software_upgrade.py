@@ -160,7 +160,6 @@ class ActionModule(ZPECloudActionBase):
         """
         schedule_formatted = schedule.isoformat()
 
-        # TODO - open an enhancement for this
         content, err = self._api_session.search_jobs(serial_number)
         if err:
             raise AnsibleActionFail(f"Failed to search jobs. Error: {err}.")
@@ -252,8 +251,6 @@ class ActionModule(ZPECloudActionBase):
         # Validate parameters
         if not self._validate_version(version):
             raise AnsibleActionFail("NG OS does not match the expected format.")
-
-        self.blah = self._play_context.remote_addr
 
         if self._play_context.remote_addr is None:
             raise AnsibleActionFail("Remote serial number from host was not found.")

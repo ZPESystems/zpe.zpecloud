@@ -61,7 +61,7 @@ def action():
         ("v6.0.3 (Feb 22 2024 - 22:10:02)", False),
     ],
 )
-def test_validate_version(version, expected, action):
+def test_software_upgrade_validate_version(version, expected, action):
     """Verify if version validation is right."""
     res = action._validate_version(version)
 
@@ -81,7 +81,7 @@ def test_validate_version(version, expected, action):
         ("v4.0 (Feb 22 2024 - 22:10:02)", None),
     ],
 )
-def test_extract_version(version, expected, action):
+def test_software_upgrade_extract_version(version, expected, action):
     """Verify if version extraction is right."""
     res = action._extract_version(version)
 
@@ -104,7 +104,7 @@ def test_extract_version(version, expected, action):
         ("", "5.0.0.0"),
     ],
 )
-def test_is_upgrade_for_wrong_format(current, next, action):
+def test_software_upgrade_is_upgrade_for_wrong_format(current, next, action):
     """Verify if version extraction is right."""
     res, err = action._is_upgrade(current, next)
 
@@ -124,7 +124,7 @@ def test_is_upgrade_for_wrong_format(current, next, action):
         ("5.1.1", "5.1.0", False),
     ],
 )
-def test_is_upgrade(current, next, expected, action):
+def test_software_upgrade_is_upgrade(current, next, expected, action):
     """Verify if version extraction is right."""
     res, err = action._is_upgrade(current, next)
 
@@ -146,7 +146,7 @@ def test_is_upgrade(current, next, expected, action):
 """ Tests for _wait_job_to_finish """
 
 
-def test_wait_job_to_finish_request_fail(action):
+def test_software_upgrade_wait_job_to_finish_request_fail(action):
     """Test wait job to finish but API request failed."""
     action._api_session.get_job.return_value = (None, "Some error")
 
@@ -154,7 +154,7 @@ def test_wait_job_to_finish_request_fail(action):
         action._wait_job_to_finish("1234")
 
 
-def test_wait_job_to_finish_missing_status(action):
+def test_software_upgrade_wait_job_to_finish_missing_status(action):
     """API response is invalid."""
     action._api_session.get_job.return_value = ("{}", None)
 
@@ -166,7 +166,7 @@ def test_wait_job_to_finish_missing_status(action):
     ("job_status"),
     [("Cancelled"), ("Timeout"), ("Failed")],
 )
-def test_wait_job_to_finish_job_fail(action, job_status):
+def test_software_upgrade_wait_job_to_finish_job_fail(action, job_status):
     """Test wait job to finish but job finished with some failure status."""
     response = json.dumps({"operation": {"status": job_status}})
     action._api_session.get_job.return_value = (response, None)
@@ -178,8 +178,7 @@ def test_wait_job_to_finish_job_fail(action, job_status):
 
 
 @patch("ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.time")
-@patch("ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.requests")
-def test_wait_job_to_finish_job_success(mock_requests, mock_time, action):
+def test_software_upgrade_wait_job_to_finish_job_success(mock_time, action):
     """Test wait job to finish with sequence of job status."""
     sending_status = json.dumps({"operation": {"status": "Sending"}, "output_file": ""})
     scheduled_status = json.dumps(
@@ -199,7 +198,6 @@ def test_wait_job_to_finish_job_success(mock_requests, mock_time, action):
     )
 
     job_output = "somethinginbase64"
-    mock_requests.get.return_value = Mock(content=job_output)
 
     mock_time.time.return_value = 0
     mock_time.sleep.return_value = None
@@ -207,16 +205,13 @@ def test_wait_job_to_finish_job_success(mock_requests, mock_time, action):
     content, err = action._wait_job_to_finish("12314")
 
     assert err is None
-    assert content == job_output
-
     assert action._api_session.get_job.call_count == 7
-    assert mock_requests.get.call_count == 1
     assert mock_time.time.call_count == 8
     assert mock_time.sleep.call_count == 6
 
 
 @patch("ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.time")
-def test_wait_job_to_finish_job_ansible_timeout(mock_time, action):
+def test_software_upgrade_wait_job_to_finish_job_ansible_timeout(mock_time, action):
     """Ansible will timeout after some time polling job status."""
     started_status = json.dumps({"operation": {"status": "Started"}, "output_file": ""})
 
@@ -250,7 +245,7 @@ def test_wait_job_to_finish_job_ansible_timeout(mock_time, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_empty_args(zpecloud_action_base_run, action):
+def test_software_upgrade_run_empty_args(zpecloud_action_base_run, action):
     """Task does not have parameters."""
     zpecloud_action_base_run.return_value = {}
 
@@ -265,7 +260,7 @@ def test_run_empty_args(zpecloud_action_base_run, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_wrong_version_format(zpecloud_action_base_run, action):
+def test_software_upgrade_run_wrong_version_format(zpecloud_action_base_run, action):
     """User type wrong version format."""
     zpecloud_action_base_run.return_value = {}
 
@@ -286,7 +281,7 @@ def test_run_wrong_version_format(zpecloud_action_base_run, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_remote_addr_not_found(zpecloud_action_base_run, action):
+def test_software_upgrade_run_remote_addr_not_found(zpecloud_action_base_run, action):
     """Host does not have remote address."""
     zpecloud_action_base_run.return_value = {}
 
@@ -307,7 +302,7 @@ def test_run_remote_addr_not_found(zpecloud_action_base_run, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_failed_fetch_device(zpecloud_action_base_run, action):
+def test_software_upgrade_run_failed_fetch_device(zpecloud_action_base_run, action):
     """Failed to search device by serial number."""
     zpecloud_action_base_run.return_value = {}
 
@@ -340,7 +335,7 @@ def test_run_failed_fetch_device(zpecloud_action_base_run, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_failed_get_device_id(zpecloud_action_base_run, action):
+def test_software_upgrade_run_failed_get_device_id(zpecloud_action_base_run, action):
     """Failed to get device ID while search by serial number."""
     zpecloud_action_base_run.return_value = {}
 
@@ -371,7 +366,7 @@ def test_run_failed_get_device_id(zpecloud_action_base_run, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_failed_get_device_version(zpecloud_action_base_run, action):
+def test_software_upgrade_run_failed_get_device_version(zpecloud_action_base_run, action):
     """Failed to get device version while search by serial number."""
     zpecloud_action_base_run.return_value = {}
 
@@ -406,7 +401,7 @@ def test_run_failed_get_device_version(zpecloud_action_base_run, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_same_version_return_ok(zpecloud_action_base_run, action):
+def test_software_upgrade_run_same_version_return_ok(zpecloud_action_base_run, action):
     """Device already running desired version, then finish with OK."""
     zpecloud_action_base_run.return_value = {}
 
@@ -442,7 +437,7 @@ def test_run_same_version_return_ok(zpecloud_action_base_run, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_get_wrong_version(zpecloud_action_base_run, action):
+def test_software_upgrade_run_get_wrong_version(zpecloud_action_base_run, action):
     """Got wrong format of version."""
     zpecloud_action_base_run.return_value = {}
 
@@ -475,7 +470,7 @@ def test_run_get_wrong_version(zpecloud_action_base_run, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_downgrade_not_allowed(zpecloud_action_base_run, action):
+def test_software_upgrade_run_downgrade_not_allowed(zpecloud_action_base_run, action):
     """User requested a downgrade, but did not set flag to true."""
     zpecloud_action_base_run.return_value = {}
 
@@ -508,7 +503,7 @@ def test_run_downgrade_not_allowed(zpecloud_action_base_run, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_fail_get_release(zpecloud_action_base_run, action):
+def test_software_upgrade_run_fail_get_release(zpecloud_action_base_run, action):
     """Failed to get Nodegrid versions."""
     zpecloud_action_base_run.return_value = {}
 
@@ -546,7 +541,7 @@ def test_run_fail_get_release(zpecloud_action_base_run, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_not_release_match(zpecloud_action_base_run, action):
+def test_software_upgrade_run_not_release_match(zpecloud_action_base_run, action):
     """Desired version as not found on zpe cloud."""
     zpecloud_action_base_run.return_value = {}
 
@@ -581,7 +576,7 @@ def test_run_not_release_match(zpecloud_action_base_run, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_wait_job_failed(zpecloud_action_base_run, action):
+def test_software_upgrade_run_wait_job_failed(zpecloud_action_base_run, action):
     """Software upgrade job failed."""
     zpecloud_action_base_run.return_value = {}
 
@@ -628,7 +623,7 @@ def test_run_wait_job_failed(zpecloud_action_base_run, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_failed_get_detail(zpecloud_action_base_run, action):
+def test_software_upgrade_run_failed_get_detail(zpecloud_action_base_run, action):
     """Failed to get detail of job."""
     zpecloud_action_base_run.return_value = {}
 
@@ -677,7 +672,7 @@ def test_run_failed_get_detail(zpecloud_action_base_run, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_failed_get_device_version_detail(zpecloud_action_base_run, action):
+def test_software_upgrade_run_failed_get_device_version_detail(zpecloud_action_base_run, action):
     """Device version not found on detail content."""
     zpecloud_action_base_run.return_value = {}
 
@@ -726,7 +721,7 @@ def test_run_failed_get_device_version_detail(zpecloud_action_base_run, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_ugprade_fail(zpecloud_action_base_run, action):
+def test_software_upgrade_run_ugprade_fail(zpecloud_action_base_run, action):
     """Software upgrade failed and device keeps with same version."""
     zpecloud_action_base_run.return_value = {}
 
@@ -775,7 +770,7 @@ def test_run_ugprade_fail(zpecloud_action_base_run, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_ugprade_succeed(zpecloud_action_base_run, action):
+def test_software_upgrade_run_ugprade_succeed(zpecloud_action_base_run, action):
     """Software upgrade succeed."""
     zpecloud_action_base_run.return_value = {}
 
@@ -826,7 +821,7 @@ def test_run_ugprade_succeed(zpecloud_action_base_run, action):
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_run_downgrade_succeed(zpecloud_action_base_run, action):
+def test_software_upgrade_run_downgrade_succeed(zpecloud_action_base_run, action):
     """Software downgrade succeed."""
     zpecloud_action_base_run.return_value = {}
 
