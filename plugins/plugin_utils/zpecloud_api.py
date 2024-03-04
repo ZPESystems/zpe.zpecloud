@@ -39,6 +39,8 @@ class ZPECloudAPI:
     timeout = 100
     query_limit = 50
 
+    SCHEDULE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+
     def __init__(self, url: str) -> None:
         if not HAS_REQUESTS:
             raise MissingDependencyError("Please install python requests library.")
@@ -264,7 +266,7 @@ class ZPECloudAPI:
         self, device_id: str, profile_id: str, schedule: datetime
     ) -> StringError:
         payload = {
-            "schedule": schedule.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            "schedule": schedule.strftime(self.SCHEDULE_FORMAT),
             "is_first_connection": "false",
         }
 
@@ -301,6 +303,7 @@ class ZPECloudAPI:
 
     def fetch_device_by_serial_number(self, serial_number: str) -> DictError:
         """Fetch Nodegrid device based on serial number."""
+
         def process_response(serial_number: str, content: List[Dict]) -> str:
             """Check if serial number matches with some device from content list."""
             content = json.loads(content)
@@ -334,3 +337,64 @@ class ZPECloudAPI:
             return device, None
 
         return None, f"Serial number {serial_number} not found"
+
+    def get_available_os_version(self) -> ListDictError:
+        os_version = []
+        while True:
+            offset_url = (
+                f"{self._url}/release?offset={len(os_version)}&limit={self.query_limit}"
+            )
+            content, err = self._get(url=offset_url)
+            if err:
+                return None, err
+
+            content = json.loads(content)
+            os_count = content.get("count", None)
+            if os_count is None:
+                return None, "Failed to retrieve Nodegrid versions count."
+
+            os_list = content.get("list", None)
+            if os_list is None:
+                return None, "Failed to retrieve Nodegrid versions list."
+
+            os_version += os_list
+            if len(os_version) >= os_count:
+                break
+
+        return os_version, None
+
+    def apply_software_upgrade(
+        self, device_id: str, os_version_id: str, schedule: datetime
+    ) -> StringError:
+        payload = {
+            "schedule": schedule.strftime(self.SCHEDULE_FORMAT),
+            "is_first_connection": "false",
+            "force_boot_mode": "false",
+        }
+
+        content, err = self._post(
+            url=f"{self._url}/device/{device_id}/release/{os_version_id}", data=payload
+        )
+
+        if err:
+            return None, err
+
+        return content, None
+
+    def search_jobs(self, search: str) -> ListDictError:
+        """Search jobs based on some param."""
+        url = f"{self._url}/job?q={search}&sort_by=-registered"
+        content, err = self._get(url=url)
+        if err:
+            return None, err
+
+        return content, None
+
+    def get_device_detail(self, device_id: str) -> StringError:
+        """Get details about device."""
+        url = f"{self._url}/device/{device_id}"
+        content, err = self._get(url=url)
+        if err:
+            return None, err
+
+        return content, None

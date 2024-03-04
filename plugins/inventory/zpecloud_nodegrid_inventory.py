@@ -6,6 +6,7 @@
 
 # Make coding more python3-ish, this is required for contributions to Ansible
 from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
 
@@ -88,26 +89,32 @@ from typing import Dict, List
 from ansible.plugins.inventory import BaseInventoryPlugin
 from ansible.errors import AnsibleParserError
 
-from ansible_collections.zpe.zpecloud.plugins.plugin_utils.zpecloud_api import ZPECloudAPI
+from ansible_collections.zpe.zpecloud.plugins.plugin_utils.zpecloud_api import (
+    ZPECloudAPI,
+)
 
 
 class ZPECloudMissingBodyInfoError(Exception):
-    """ Raised if expected information is not found on response body. """
+    """Raised if expected information is not found on response body."""
+
     pass
 
 
 class ZPECloudDefaultCustomField(Exception):
     """Raised once default custom field is created. Ansible will not use default ones."""
+
     pass
 
 
 class ZPECloudDisabledCustomField(Exception):
     """Raised once custom field is disabled on ZPE Cloud."""
+
     pass
 
 
 class GroupPrefix:
     """Prefixes used to differentiate inventory from ZPE Cloud from user defined one."""
+
     GROUP = "zpecloud_group_"
     SITE = "zpecloud_site_"
     DEVICE = "zpecloud_device_"
@@ -116,6 +123,7 @@ class GroupPrefix:
 
 class ZPECloudDefaultGroups:
     """Default groups to aggregate Nodegrid devices."""
+
     DEVICE_ENROLLED = f"{GroupPrefix.DEVICE}enrolled"
     DEVICE_AVAILABLE = f"{GroupPrefix.DEVICE}available"
     DEVICE_ONLINE = f"{GroupPrefix.DEVICE}online"
@@ -125,19 +133,22 @@ class ZPECloudDefaultGroups:
 
 class AvailabilityStatus:
     """Availability status of Nodegrid devices."""
+
     ONLINE = "online"
     OFFLINE = "offline"
     FAILOVER = "failover"
 
 
 class EnrollStatus:
-    """"Enrollment status of Nodegrid devices."""
+    """ "Enrollment status of Nodegrid devices."""
+
     ENROLLED = "enrolled"
     AVAILABLE = "available"
 
 
 class CustomFieldScope:
-    """"Scope of custom fields."""
+    """ "Scope of custom fields."""
+
     GLOBAL = "global"
     GROUP = "group"
     SITE = "site"
@@ -148,11 +159,12 @@ def name_sanitization(name: str) -> str:
     """Sanitize names of hosts, groups, and variables, to be complaint with requirements from Ansible."""
     regex = re.compile(r"[^A-Za-z0-9\_]")
     name = name.lower()
-    return regex.sub('_', name)
+    return regex.sub("_", name)
 
 
 class ZPECloudHost:
     """Object to represent a Nodegrid device inside Ansible inventory."""
+
     def __init__(self, device_info: Dict, enroll_status: EnrollStatus) -> None:
         if not isinstance(device_info, Dict):
             raise TypeError("Dictionary expected.")
@@ -165,7 +177,9 @@ class ZPECloudHost:
 
         serial_number = device_info.get("serial_number", None)
         if serial_number is None:
-            raise ZPECloudMissingBodyInfoError(f"Failed to get serial number from Nodegrid device. Hostname: {device_info.get('hostname')}.")
+            raise ZPECloudMissingBodyInfoError(
+                f"Failed to get serial number from Nodegrid device. Hostname: {device_info.get('hostname')}."
+            )
         else:
             self.serial_number = serial_number
 
@@ -195,7 +209,9 @@ class ZPECloudHost:
 
         status = device_info.get("device_status")
         if status is None:
-            raise ZPECloudMissingBodyInfoError(f"Failed to get status from Nodegrid device. Hostname: {device_info.get('hostname')}")
+            raise ZPECloudMissingBodyInfoError(
+                f"Failed to get status from Nodegrid device. Hostname: {device_info.get('hostname')}"
+            )
         else:
             status = status.lower()
 
@@ -223,6 +239,7 @@ class ZPECloudHost:
 
 class ZPECloudGroup:
     """Object to represent a ZPE Cloud group inside Ansible inventory."""
+
     def __init__(self, group_info: Dict) -> None:
         if not isinstance(group_info, Dict):
             raise TypeError("Dictionary expected.")
@@ -235,7 +252,9 @@ class ZPECloudGroup:
 
         name = group_info.get("name", None)
         if name is None:
-            raise ZPECloudMissingBodyInfoError("Failed to get name from ZPE Cloud group.")
+            raise ZPECloudMissingBodyInfoError(
+                "Failed to get name from ZPE Cloud group."
+            )
         else:
             name = name_sanitization(name)
             self.name = f"{GroupPrefix.GROUP}{name}"
@@ -243,6 +262,7 @@ class ZPECloudGroup:
 
 class ZPECloudSite:
     """Object to represent a ZPE Cloud site inside Ansible inventory."""
+
     def __init__(self, site_info: Dict) -> None:
         if not isinstance(site_info, Dict):
             raise TypeError("Dictionary expected.")
@@ -255,7 +275,9 @@ class ZPECloudSite:
 
         name = site_info.get("name", None)
         if name is None:
-            raise ZPECloudMissingBodyInfoError("Failed to get name from ZPE Cloud site.")
+            raise ZPECloudMissingBodyInfoError(
+                "Failed to get name from ZPE Cloud site."
+            )
         else:
             name = name_sanitization(name)
             self.name = f"{GroupPrefix.SITE}{name}"
@@ -263,15 +285,20 @@ class ZPECloudSite:
 
 class ZPECustomFields:
     """Object to represent a ZPE Cloud custom field inside Ansible inventory."""
+
     def __init__(self, custom_field_info: Dict) -> None:
         if not isinstance(custom_field_info, Dict):
             raise TypeError("Dictionary expected.")
 
         name = custom_field_info.get("name", None)
         if name is None:
-            raise ZPECloudMissingBodyInfoError("Failed to get name from ZPE Cloud custom field.")
+            raise ZPECloudMissingBodyInfoError(
+                "Failed to get name from ZPE Cloud custom field."
+            )
         elif "." in name:
-            raise ZPECloudDefaultCustomField(f"Default custom fields from ZPE Cloud is not used on Ansible. Custom field name: {name}.")
+            raise ZPECloudDefaultCustomField(
+                f"Default custom fields from ZPE Cloud is not used on Ansible. Custom field name: {name}."
+            )
         else:
             name = name_sanitization(name)
             self.name = f"{GroupPrefix.CUSTOM_FIELD}{name}"
@@ -284,22 +311,32 @@ class ZPECustomFields:
 
         scope = custom_field_info.get("scope", None)
         if scope is None:
-            raise ZPECloudMissingBodyInfoError(f"Failed to get scope from ZPE CLoud custom field. Custom field name: {name}.")
+            raise ZPECloudMissingBodyInfoError(
+                f"Failed to get scope from ZPE CLoud custom field. Custom field name: {name}."
+            )
         else:
             self.scope = scope
 
         if scope == CustomFieldScope.GLOBAL:
             self.reference = reference
 
-        elif scope == CustomFieldScope.GROUP or scope == CustomFieldScope.SITE or scope == CustomFieldScope.DEVICE:
+        elif (
+            scope == CustomFieldScope.GROUP
+            or scope == CustomFieldScope.SITE
+            or scope == CustomFieldScope.DEVICE
+        ):
             # reference will be null for global, but must have value for other scopes
             if reference is None:
-                raise ZPECloudMissingBodyInfoError(f"Failed to get reference from ZPE Cloud custom field. Custom field name: {name}.")
+                raise ZPECloudMissingBodyInfoError(
+                    f"Failed to get reference from ZPE Cloud custom field. Custom field name: {name}."
+                )
 
             if scope == CustomFieldScope.DEVICE:
                 serial_number = reference.split(" ")[-1]
                 if len(serial_number) == 0:
-                    raise ZPECloudMissingBodyInfoError(f"Failed to get reference from ZPE Cloud custom field with device scope. Custom field name: {name}.")
+                    raise ZPECloudMissingBodyInfoError(
+                        f"Failed to get reference from ZPE Cloud custom field with device scope. Custom field name: {name}."
+                    )
 
                 self.reference = serial_number
 
@@ -307,37 +344,49 @@ class ZPECustomFields:
                 self.reference = name_sanitization(reference)
 
         else:
-            raise ZPECloudMissingBodyInfoError(f"Invalid scope from ZPE Cloud custom field. Custom field name: {name}.")
+            raise ZPECloudMissingBodyInfoError(
+                f"Invalid scope from ZPE Cloud custom field. Custom field name: {name}."
+            )
 
         value = custom_field_info.get("value", None)
         if value is None:
-            raise ZPECloudMissingBodyInfoError(f"Failed to get value from ZPE Cloud custom field. Custom field name: {name}.")
+            raise ZPECloudMissingBodyInfoError(
+                f"Failed to get value from ZPE Cloud custom field. Custom field name: {name}."
+            )
         else:
             self.value = value
 
         enabled = custom_field_info.get("enabled", None)
         if enabled is None:
-            raise ZPECloudMissingBodyInfoError(f"Failed get enabled property from ZPE Cloud custom field. Custom field name: {name}.")
+            raise ZPECloudMissingBodyInfoError(
+                f"Failed get enabled property from ZPE Cloud custom field. Custom field name: {name}."
+            )
         else:
             self.enabled = enabled
 
         dynamic = custom_field_info.get("dynamic", None)
         if dynamic is None:
-            raise ZPECloudMissingBodyInfoError(f"Failed to get dynamic property from ZPE Cloud custom field. Custom field name: {name}.")
+            raise ZPECloudMissingBodyInfoError(
+                f"Failed to get dynamic property from ZPE Cloud custom field. Custom field name: {name}."
+            )
         else:
             self.dynamic = dynamic
 
 
 class InventoryModule(BaseInventoryPlugin):
-    NAME = 'zpe.zpecloud.zpecloud_nodegrid_inventory'
+    NAME = "zpe.zpecloud.zpecloud_nodegrid_inventory"
 
-    def _validate_devices(self, devices: List, enroll_status: EnrollStatus) -> List[ZPECloudHost]:
+    def _validate_devices(
+        self, devices: List, enroll_status: EnrollStatus
+    ) -> List[ZPECloudHost]:
         valid_devices = []
         for d in devices:
             try:
                 valid_devices.append(ZPECloudHost(d, enroll_status))
             except Exception as err:
-                self.display.warning(f"Failed to validate Nodegrid device. Error: {err}")
+                self.display.warning(
+                    f"Failed to validate Nodegrid device. Error: {err}"
+                )
 
         return valid_devices
 
@@ -357,7 +406,9 @@ class InventoryModule(BaseInventoryPlugin):
             try:
                 valid_groups.append(ZPECloudGroup(g))
             except Exception as err:
-                self.display.warning(f"Failed to validate ZPE Cloud group. Error: {err}")
+                self.display.warning(
+                    f"Failed to validate ZPE Cloud group. Error: {err}"
+                )
 
         return valid_groups
 
@@ -375,28 +426,36 @@ class InventoryModule(BaseInventoryPlugin):
 
         return valid_custom_fields
 
-    def _parse_devices(self,
-                       zpecloud_groups: List[ZPECloudGroup],
-                       zpecloud_sites: List[ZPECloudSite]) -> List[ZPECloudHost]:
+    def _parse_devices(
+        self, zpecloud_groups: List[ZPECloudGroup], zpecloud_sites: List[ZPECloudSite]
+    ) -> List[ZPECloudHost]:
         device_list = []
         enrolled_devices, err = self._api_session.get_enrolled_devices()
         if err:
-            raise AnsibleParserError(f"Failed to get devices from enroll tab. Error: {err}.")
+            raise AnsibleParserError(
+                f"Failed to get devices from enroll tab. Error: {err}."
+            )
 
         device_list += self._validate_devices(enrolled_devices, EnrollStatus.ENROLLED)
 
         available_devices, err = self._api_session.get_available_devices()
         if err:
-            raise AnsibleParserError(f"Failed to get devices from available tab. Error: {err}.")
+            raise AnsibleParserError(
+                f"Failed to get devices from available tab. Error: {err}."
+            )
 
         device_list += self._validate_devices(available_devices, EnrollStatus.AVAILABLE)
 
         if len(device_list) == 0:
             AnsibleParserError("No device found in ZPE Cloud.")
 
-        discarded_count = len(available_devices) + len(enrolled_devices) - len(device_list)
+        discarded_count = (
+            len(available_devices) + len(enrolled_devices) - len(device_list)
+        )
         if discarded_count > 0:
-            self.display.warning(f"{discarded_count} Nodegrid devices were discarded due required fields missing. ")
+            self.display.warning(
+                f"{discarded_count} Nodegrid devices were discarded due required fields missing. "
+            )
 
         # Devices are mapped to sites, and groups, by its IDs but name is required to store inside inventory
         # Create a lookup table for sites, and groups, mapping id to names
@@ -425,7 +484,9 @@ class InventoryModule(BaseInventoryPlugin):
             if device.enroll_status == EnrollStatus.ENROLLED:
                 self.inventory.add_child(ZPECloudDefaultGroups.DEVICE_ENROLLED, host_id)
             else:
-                self.inventory.add_child(ZPECloudDefaultGroups.DEVICE_AVAILABLE, host_id)
+                self.inventory.add_child(
+                    ZPECloudDefaultGroups.DEVICE_AVAILABLE, host_id
+                )
 
             # assign device to group based on availability status
             if device.status == AvailabilityStatus.ONLINE:
@@ -452,7 +513,9 @@ class InventoryModule(BaseInventoryPlugin):
     def _parse_groups(self) -> List[ZPECloudGroup]:
         groups, err = self._api_session.get_groups()
         if err:
-            raise AnsibleParserError(f"Failed to get groups from ZPE Cloud. Error: {err}.")
+            raise AnsibleParserError(
+                f"Failed to get groups from ZPE Cloud. Error: {err}."
+            )
 
         group_list = self._validate_groups(groups)
         for group in group_list:
@@ -463,7 +526,9 @@ class InventoryModule(BaseInventoryPlugin):
     def _parse_sites(self) -> List[ZPECloudSite]:
         sites, err = self._api_session.get_sites()
         if err:
-            raise AnsibleParserError(f"Failed to get sites from ZPE Cloud. Error: {err}.")
+            raise AnsibleParserError(
+                f"Failed to get sites from ZPE Cloud. Error: {err}."
+            )
 
         site_list = self._validate_sites(sites)
         for site in site_list:
@@ -474,7 +539,9 @@ class InventoryModule(BaseInventoryPlugin):
     def _parse_custom_fields(self, devices: List[ZPECloudHost]) -> None:
         custom_fields, err = self._api_session.get_custom_fields()
         if err:
-            raise AnsibleParserError(f"Failed to get custom fields from ZPE Cloud. Error: {err}.")
+            raise AnsibleParserError(
+                f"Failed to get custom fields from ZPE Cloud. Error: {err}."
+            )
 
         cf_list = self._validate_custom_fields(custom_fields)
 
@@ -508,7 +575,7 @@ class InventoryModule(BaseInventoryPlugin):
                     self.inventory.set_variable(cf.reference, cf.name, cf.value)
 
     def verify_file(self, path):
-        ''' return true/false if this is possibly a valid file for this plugin to consume '''
+        """return true/false if this is possibly a valid file for this plugin to consume"""
         valid = False
         if super(InventoryModule, self).verify_file(path):
             # base class verifies that file exists and is readable by current user
@@ -523,29 +590,45 @@ class InventoryModule(BaseInventoryPlugin):
         if url is None:
             url = "https://zpecloud.com"
 
-        username = self.get_option("username", None) or os.environ.get("ZPECLOUD_USERNAME", None)
+        username = self.get_option("username", None) or os.environ.get(
+            "ZPECLOUD_USERNAME", None
+        )
         if username is None:
-            raise AnsibleParserError("Could not retrieve ZPE Cloud username from plugin configuration or environment.")
+            raise AnsibleParserError(
+                "Could not retrieve ZPE Cloud username from plugin configuration or environment."
+            )
 
-        password = self.get_option("password", None) or os.environ.get("ZPECLOUD_PASSWORD", None)
+        password = self.get_option("password", None) or os.environ.get(
+            "ZPECLOUD_PASSWORD", None
+        )
         if password is None:
-            raise AnsibleParserError("Could not retrieve ZPE Cloud password from plugin configuration or environment.")
+            raise AnsibleParserError(
+                "Could not retrieve ZPE Cloud password from plugin configuration or environment."
+            )
 
-        organization = self.get_option("organization", None) or os.environ.get("ZPECLOUD_ORGANIZATION", None)
+        organization = self.get_option("organization", None) or os.environ.get(
+            "ZPECLOUD_ORGANIZATION", None
+        )
 
         try:
             self._api_session = ZPECloudAPI(url)
         except Exception as err:
-            raise AnsibleParserError(f"Failed to authenticate on ZPE Cloud. Error: {err}.")
+            raise AnsibleParserError(
+                f"Failed to authenticate on ZPE Cloud. Error: {err}."
+            )
 
         result, err = self._api_session.authenticate_with_password(username, password)
         if err:
-            raise AnsibleParserError(f"Failed to authenticate on ZPE Cloud. Error: {err}.")
+            raise AnsibleParserError(
+                f"Failed to authenticate on ZPE Cloud. Error: {err}."
+            )
 
         if organization:
             result, err = self._api_session.change_organization(organization)
             if err:
-                raise AnsibleParserError(f"Failed to switch organization. Error: {err}.")
+                raise AnsibleParserError(
+                    f"Failed to switch organization. Error: {err}."
+                )
 
     def parse(self, inventory, loader, path, cache=True):
         super(InventoryModule, self).parse(inventory, loader, path)
@@ -571,9 +654,13 @@ class InventoryModule(BaseInventoryPlugin):
         zpecloud_sites = self._parse_sites()
 
         # fetch devices from ZPE Cloud and populate hosts
-        self.display.v("Fetching Nodegrid devices from ZPE Cloud and creating Ansible hosts ...")
+        self.display.v(
+            "Fetching Nodegrid devices from ZPE Cloud and creating Ansible hosts ..."
+        )
         zpecloud_devices = self._parse_devices(zpecloud_groups, zpecloud_sites)
 
         # fetch custom fields from ZPE Cloud
-        self.display.v("Fetching custom fields devices from ZPE Cloud and creating Ansible variables ...")
+        self.display.v(
+            "Fetching custom fields devices from ZPE Cloud and creating Ansible variables ..."
+        )
         self._parse_custom_fields(zpecloud_devices)
