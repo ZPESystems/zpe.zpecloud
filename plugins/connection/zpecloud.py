@@ -225,7 +225,7 @@ class Connection(ConnectionBase):
                 )
 
     def _wrapper_exec_command(self, cmd: str) -> str:
-        """ """
+        """Wrap Ansible command inside a bash command that will be executed by ZPE Cloud."""
         profile_content, err = render_exec_command(cmd)
         if err:
             raise AnsibleError(f"Failed to execute command. Error: {err}.")
@@ -233,7 +233,7 @@ class Connection(ConnectionBase):
         return profile_content
 
     def _create_profile(self, profile_content: str) -> str:
-        """ """
+        """Create script profile."""
         profile_name = f"ansible_{uuid.uuid4()}"
         self._log_info(f"Creating profile: {profile_name}")
 
@@ -277,7 +277,7 @@ class Connection(ConnectionBase):
         return response.get("id")
 
     def _delete_profile(self, profile_id: str) -> None:
-        """ """
+        """Delete script profile from ZPE Cloud."""
         err = self._api_session.delete_profile(profile_id)[1]
         if err:
             self._log_warning(
@@ -285,7 +285,7 @@ class Connection(ConnectionBase):
             )
 
     def _apply_profile(self, device_id: str, profile_id: str) -> str:
-        """ """
+        """Apply script profile to device."""
         self._log_info(f"Applying profile {profile_id} to device: {device_id}")
 
         schedule = datetime.utcnow()
@@ -455,17 +455,19 @@ class Connection(ConnectionBase):
         super(Connection, self).exec_command(cmd, in_data=in_data, sudoable=sudoable)
         self._log_info("[exec_command override]")
 
+        cmd = to_text(cmd)
+
         # change default executable process to "su ansible". This enforce the commands to be executed as ansible user.
         # e.g.
         # From: /bin/sh -c 'echo ~ && sleep 0'
-        # To: su ansible -c 'echo ~ && sleep 0'
-        cmd = to_text(cmd)
-        if self._play_context.executable in cmd:
+        # To: su ansible -c 'echo ~ && sleep 0' for default ansible user
+        if self.become is None:
+            if self._play_context.executable not in cmd:
+                raise AnsibleError(
+                    "Executable process in command does not match expected process."
+                )
+
             cmd = cmd.replace(self._play_context.executable, "su ansible")
-        else:
-            raise AnsibleError(
-                "Executable process in command does not match expected process."
-            )
 
         profile_content = self._wrapper_exec_command(cmd)
 

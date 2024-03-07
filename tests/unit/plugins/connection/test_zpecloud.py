@@ -40,6 +40,7 @@ def test_connect_empty_remote_address(connection):
     connection.host_serial_number = None
     connection.host_zpecloud_id = None
     connection._play_context = Mock(remote_addr=None)
+    connection.become = None
 
     with pytest.raises(AnsibleConnectionFailure):
         connection._connect()
@@ -109,6 +110,38 @@ def test_connect_success(mock_zpecloud_api, connection):
 
 """ Tests for _connect """
 """ Tests for exec_command """
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ConnectionBase.exec_command"
+)
+def test_exec_command_as_default_user(mock_exec_command_super, connection):
+    """Ansible runs profiles as Ansible user by default."""
+    mock_exec_command_super.return_value = None
+
+    ansible_cmd = "/bin/sh -c 'echo ~ && sleep 0'"
+    expected_cmd = "su ansible -c 'echo ~ && sleep 0'"
+
+    job_output = "/home/ansible"
+
+    connection._play_context.executable = "/bin/sh"
+    connection._wrapper_exec_command = Mock()
+    connection._wrapper_exec_command.return_value = "wrapped command"
+    connection._create_profile = Mock()
+    connection._create_profile.return_value = "123"
+    connection._apply_profile = Mock()
+    connection._apply_profile.return_value = "456"
+    connection._wait_job_to_finish = Mock()
+    connection._wait_job_to_finish.return_value = (job_output, None)
+    connection._delete_profile = Mock()
+
+    result = connection.exec_command(cmd=ansible_cmd)
+
+    assert result[0] == 0
+    assert result[1] == job_output.encode("utf-8")
+    assert connection._wrapper_exec_command.call_count == 1
+    assert connection._wrapper_exec_command.call_args.args[0] == expected_cmd
+
 
 """ Tests for exec_command """
 """ Tests for put_file """

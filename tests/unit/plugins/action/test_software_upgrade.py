@@ -197,8 +197,6 @@ def test_software_upgrade_wait_job_to_finish_job_success(mock_time, action):
         + [(successful_status, None)]
     )
 
-    job_output = "somethinginbase64"
-
     mock_time.time.return_value = 0
     mock_time.sleep.return_value = None
 
@@ -326,9 +324,6 @@ def test_software_upgrade_run_failed_fetch_device(zpecloud_action_base_run, acti
         action.run()
 
     assert action.host_serial_number == remote_addr
-    # assert action._api_session.fetch_device_by_serial_number.assert_called_with(
-    #    remote_addr
-    # )
     assert "Failed to fetch device in ZPE Cloud." in str(err.value)
 
 
@@ -357,9 +352,6 @@ def test_software_upgrade_run_failed_get_device_id(zpecloud_action_base_run, act
         action.run()
 
     assert action.host_serial_number == remote_addr
-    # assert action._api_session.fetch_device_by_serial_number.assert_called_with(
-    #    remote_addr
-    # )
     assert str(err.value) == "Failed to get device ID."
 
 
@@ -392,9 +384,6 @@ def test_software_upgrade_run_failed_get_device_version(zpecloud_action_base_run
         action.run()
 
     assert action.host_serial_number == remote_addr
-    # assert action._api_session.fetch_device_by_serial_number.assert_called_with(
-    #    remote_addr
-    # )
     assert str(err.value) == "Failed to get current device version."
 
 
@@ -427,9 +416,6 @@ def test_software_upgrade_run_same_version_return_ok(zpecloud_action_base_run, a
     result = action.run()
 
     assert action.host_serial_number == remote_addr
-    # assert action._api_session.fetch_device_by_serial_number.assert_called_with(
-    #    action.host_serial_number
-    # )
     assert result["ok"] is True
     assert f"Device already on Nodegrid version {device_version}" in result["msg"]
 
