@@ -349,13 +349,13 @@ class Connection(ConnectionBase):
 
                     return (
                         None,
-                        f"Job finish with status {operation_status}. Output: {msg}.",
+                        f"Job finished with status {operation_status}. Output: {msg}.",
                     )
 
                 else:
                     return (
                         None,
-                        f"Job finish with status {operation_status}. Not output content.",
+                        f"Job finished with status {operation_status}. Not output content.",
                     )
 
             delay = exponential_backoff_delay(
