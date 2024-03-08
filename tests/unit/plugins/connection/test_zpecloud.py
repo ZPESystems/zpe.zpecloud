@@ -600,7 +600,7 @@ def test_wait_job_to_finish_job_ansible_timeout(
     content, err = connection._wait_job_to_finish("12314")
 
     assert content is None
-    assert err == "Timeout"
+    assert err == "Job timeout"
 
     assert mock_zpecloud_api.get_job.call_count == 3
     assert mock_time.time.call_count == 5

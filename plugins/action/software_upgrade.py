@@ -214,11 +214,11 @@ class ActionModule(ZPECloudActionBase):
                 or operation_status == "Cancelled"
                 or operation_status == "Timeout"
             ):
-                self._log_info(f"Job {job_id} failed")
+                self._log_info(f"Job {job_id} finished with status {operation_status}")
 
                 return (
                     None,
-                    f"Job finish with status {operation_status}.",
+                    f"Job finished with status {operation_status}",
                 )
 
             delay = exponential_backoff_delay(
@@ -227,7 +227,7 @@ class ActionModule(ZPECloudActionBase):
             request_attempt += 1
             time.sleep(delay)
 
-        return None, "Timeout"
+        return None, "Job timeout"
 
     def run(self, tmp=None, task_vars=None):
         self._log_info("[run override]")

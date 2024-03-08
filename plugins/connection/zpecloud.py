@@ -338,7 +338,7 @@ class Connection(ConnectionBase):
                 or operation_status == "Cancelled"
                 or operation_status == "Timeout"
             ):
-                self._log_info(f"Job {job_id} failed")
+                self._log_info(f"Job {job_id} finished with status {operation_status}")
 
                 if operation_output_file_url and len(operation_output_file_url) > 0:
                     r = requests.get(operation_output_file_url)
@@ -364,7 +364,7 @@ class Connection(ConnectionBase):
             request_attempt += 1
             time.sleep(delay)
 
-        return None, "Timeout"
+        return None, "Job timeout"
 
     def _process_put_file(self, data: str) -> str:
         """ """
