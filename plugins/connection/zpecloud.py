@@ -22,6 +22,9 @@ notes:
   - Plugin will poll ZPE Cloud API to fetch status of each job until status is successful.
   - The poll algorithm uses exponential backoff delay, and will timeout after 1 hour.
   - Plugin will check file size for put, and fetch tasks. The limit is 100Mb.
+  - The inventory variable interpreter_python must be configured to "/usr/bin/python3".
+  - The variable interpreter_python is set automatically by zpecloud dynamic inventory.
+  - Profile execution may hang if interpreter_python is not defined.
 requirements:
   - requests
 options:
@@ -138,7 +141,7 @@ class Connection(ConnectionBase):
     """Plugin to create a transport method between Ansible and Nodegrid device over ZPE CLOUD API."""
 
     transport = "zpe.zpecloud.zpecloud"
-    has_pipelining = True
+    has_pipelining = False
     filename_inside_zip = (
         "original-file"  # name of important file located inside compressed file
     )

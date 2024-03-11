@@ -376,6 +376,9 @@ class ZPECustomFields:
 class InventoryModule(BaseInventoryPlugin):
     NAME = "zpe.zpecloud.zpecloud_nodegrid_inventory"
 
+    # Default python interpreter for Nodegrid devices
+    default_interpreter_python = "/usr/bin/python3"
+
     def _validate_devices(
         self, devices: List, enroll_status: EnrollStatus
     ) -> List[ZPECloudHost]:
@@ -573,6 +576,16 @@ class InventoryModule(BaseInventoryPlugin):
                 if device_lookup.get(cf.reference, None):
                     self.inventory.set_variable(cf.reference, cf.name, cf.value)
 
+    def _set_default_variables(self, devices: List[ZPECloudHost]) -> None:
+        """Set default variables required for zpecloud connection."""
+        for d in devices:
+            # Set default python interpreter for all Nodegrid devices
+            # This is required to prevent Ansible of sending jobs to discover the interpreter
+            # These jobs could block the device for 1 hour
+            self.inventory.set_variable(
+                d.serial_number, "ansible_python_interpreter", self.default_interpreter_python
+            )
+
     def verify_file(self, path):
         """return true/false if this is possibly a valid file for this plugin to consume"""
         valid = False
@@ -657,6 +670,8 @@ class InventoryModule(BaseInventoryPlugin):
             "Fetching Nodegrid devices from ZPE Cloud and creating Ansible hosts ..."
         )
         zpecloud_devices = self._parse_devices(zpecloud_groups, zpecloud_sites)
+
+        self._set_default_variables(zpecloud_devices)
 
         # fetch custom fields from ZPE Cloud
         self.display.v(
