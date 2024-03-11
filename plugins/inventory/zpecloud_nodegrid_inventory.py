@@ -537,9 +537,8 @@ class InventoryModule(BaseInventoryPlugin):
     def _parse_custom_fields(self, devices: List[ZPECloudHost]) -> None:
         custom_fields, err = self._api_session.get_custom_fields()
         if err:
-            raise AnsibleParserError(
-                f"Failed to get custom fields from ZPE Cloud. Error: {err}."
-            )
+            self.display.v(f"Failed to get custom fields from ZPE Cloud. Error: {err}.")
+            return []
 
         cf_list = self._validate_custom_fields(custom_fields)
 
