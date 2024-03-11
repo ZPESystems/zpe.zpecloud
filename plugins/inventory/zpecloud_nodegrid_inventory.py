@@ -534,7 +534,9 @@ class InventoryModule(BaseInventoryPlugin):
 
         return site_list
 
-    def _parse_custom_fields(self, devices: List[ZPECloudHost]) -> None:
+    def _parse_custom_fields(
+        self, devices: List[ZPECloudHost]
+    ) -> List[ZPECustomFields]:
         custom_fields, err = self._api_session.get_custom_fields()
         if err:
             self.display.v(f"Failed to get custom fields from ZPE Cloud. Error: {err}.")
