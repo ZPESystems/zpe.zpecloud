@@ -377,7 +377,11 @@ class InventoryModule(BaseInventoryPlugin):
     NAME = "zpe.zpecloud.zpecloud_nodegrid_inventory"
 
     # Default python interpreter for Nodegrid devices
+<<<<<<< HEAD
     default_interpreter_python = "python3"
+=======
+    default_interpreter_python = "/usr/bin/python3"
+>>>>>>> 692618b (define default interpreter, and disable pipelining)
 
     def _validate_devices(
         self, devices: List, enroll_status: EnrollStatus
