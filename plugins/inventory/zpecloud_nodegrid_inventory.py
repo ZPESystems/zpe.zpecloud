@@ -513,9 +513,8 @@ class InventoryModule(BaseInventoryPlugin):
     def _parse_groups(self) -> List[ZPECloudGroup]:
         groups, err = self._api_session.get_groups()
         if err:
-            raise AnsibleParserError(
-                f"Failed to get groups from ZPE Cloud. Error: {err}."
-            )
+            self.display.v(f"Failed to get groups from ZPE Cloud. Error: {err}.")
+            return []
 
         group_list = self._validate_groups(groups)
         for group in group_list:
@@ -526,9 +525,8 @@ class InventoryModule(BaseInventoryPlugin):
     def _parse_sites(self) -> List[ZPECloudSite]:
         sites, err = self._api_session.get_sites()
         if err:
-            raise AnsibleParserError(
-                f"Failed to get sites from ZPE Cloud. Error: {err}."
-            )
+            self.display.v(f"Failed to get sites from ZPE Cloud. Error: {err}.")
+            return []
 
         site_list = self._validate_sites(sites)
         for site in site_list:
