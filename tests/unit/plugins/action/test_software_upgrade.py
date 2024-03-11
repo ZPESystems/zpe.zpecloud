@@ -229,7 +229,7 @@ def test_software_upgrade_wait_job_to_finish_job_ansible_timeout(mock_time, acti
     content, err = action._wait_job_to_finish("12314")
 
     assert content is None
-    assert err == "Timeout"
+    assert err == "Job timeout"
 
     assert action._api_session.get_job.call_count == 3
     assert mock_time.time.call_count == 5
