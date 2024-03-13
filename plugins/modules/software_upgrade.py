@@ -31,6 +31,11 @@ options:
     default: false
 author:
   - Daniel Nesvera (@zpe-dnesvera)
+notes:
+  - Action will poll ZPE Cloud API to fetch status of software upgrade until status is successful.
+  - The poll algorithm uses exponential backoff delay, and will timeout after 1 hour.
+  - ZPE Cloud only applies profile to device that are enrolled, and status is online, or failover.
+  - Task will fail with unreachable result if ZPE Cloud is not able to apply profile to device.
 """
 
 EXAMPLES = r"""

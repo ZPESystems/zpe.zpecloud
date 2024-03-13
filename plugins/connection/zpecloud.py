@@ -25,6 +25,8 @@ notes:
   - The inventory variable interpreter_python must be configured to "/usr/bin/python3".
   - The variable interpreter_python is set automatically by zpecloud dynamic inventory.
   - Profile execution may hang if interpreter_python is not defined.
+  - ZPE Cloud only applies profile to device that are enrolled, and status is online, or failover.
+  - Task will fail with unreachable result if ZPE Cloud is not able to apply profile to device.
 requirements:
   - requests
 options:
@@ -423,6 +425,7 @@ class Connection(ConnectionBase):
         if self._api_session is None:
             self._create_api_session()
 
+        # get reference for device in ZPE Cloud
         if self.host_serial_number is None or self.host_zpecloud_id is None:
             if self._play_context.remote_addr is None:
                 raise AnsibleConnectionFailure(
@@ -446,6 +449,15 @@ class Connection(ConnectionBase):
                 )
 
             self.host_zpecloud_id = host_id
+
+        # check if device can receive profiles
+        is_device_ready, err = self._api_session.can_apply_profile_on_device(
+            self.host_serial_number
+        )
+        if err or not is_device_ready:
+            raise AnsibleConnectionFailure(
+                f"Nodegrid device is not ready to receive profiles via ZPE Cloud. {err}."
+            )
 
         return self
 
