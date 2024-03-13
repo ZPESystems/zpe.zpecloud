@@ -315,6 +315,7 @@ def test_software_upgrade_run_failed_fetch_device(zpecloud_action_base_run, acti
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
     action._api_session.fetch_device_by_serial_number.return_value = (
         None,
         "some error",
@@ -345,6 +346,7 @@ def test_software_upgrade_run_failed_get_device_id(zpecloud_action_base_run, act
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     action._api_session.fetch_device_by_serial_number.return_value = ({}, None)
 
@@ -375,6 +377,7 @@ def test_software_upgrade_run_failed_get_device_version(
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     action._api_session.fetch_device_by_serial_number.return_value = (
@@ -407,6 +410,7 @@ def test_software_upgrade_run_same_version_return_ok(zpecloud_action_base_run, a
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "6.0.0"
@@ -440,6 +444,7 @@ def test_software_upgrade_run_get_wrong_version(zpecloud_action_base_run, action
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "6.1"
@@ -473,6 +478,7 @@ def test_software_upgrade_run_downgrade_not_allowed(zpecloud_action_base_run, ac
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "6.1.0"
@@ -506,6 +512,7 @@ def test_software_upgrade_run_fail_get_release(zpecloud_action_base_run, action)
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "5.10.0"
@@ -544,6 +551,7 @@ def test_software_upgrade_run_not_release_match(zpecloud_action_base_run, action
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "5.100.0"
@@ -580,6 +588,7 @@ def test_software_upgrade_run_fail_device_not_ready(zpecloud_action_base_run, ac
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (False, "some error")
 
     device_id = "567"
     device_version = "5.9.10"
@@ -598,8 +607,6 @@ def test_software_upgrade_run_fail_device_not_ready(zpecloud_action_base_run, ac
     job_id = "999"
     action._apply_software_upgrade = Mock()
     action._apply_software_upgrade.return_value = job_id
-
-    action._api_session.can_apply_profile_on_device.return_value = (False, "some error")
 
     result = action.run()
 
@@ -629,6 +636,7 @@ def test_software_upgrade_run_wait_job_failed(zpecloud_action_base_run, action):
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "5.9.10"
@@ -647,8 +655,6 @@ def test_software_upgrade_run_wait_job_failed(zpecloud_action_base_run, action):
     job_id = "999"
     action._apply_software_upgrade = Mock()
     action._apply_software_upgrade.return_value = job_id
-
-    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     action._wait_job_to_finish = Mock()
     action._wait_job_to_finish.return_value = (None, "some error")
@@ -678,6 +684,7 @@ def test_software_upgrade_run_failed_get_detail(zpecloud_action_base_run, action
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "5.9.10"
@@ -692,8 +699,6 @@ def test_software_upgrade_run_failed_get_detail(zpecloud_action_base_run, action
         [{"id": os_id, "name": os_name}],
         None,
     )
-
-    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     job_id = "999"
     action._apply_software_upgrade = Mock()
@@ -731,6 +736,7 @@ def test_software_upgrade_run_failed_get_device_version_detail(
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "5.9.10"
@@ -745,8 +751,6 @@ def test_software_upgrade_run_failed_get_device_version_detail(
         [{"id": os_id, "name": os_name}],
         None,
     )
-
-    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     job_id = "999"
     action._apply_software_upgrade = Mock()
@@ -782,6 +786,7 @@ def test_software_upgrade_run_ugprade_fail(zpecloud_action_base_run, action):
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "5.9.10"
@@ -796,8 +801,6 @@ def test_software_upgrade_run_ugprade_fail(zpecloud_action_base_run, action):
         [{"id": os_id, "name": os_name}],
         None,
     )
-
-    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     job_id = "999"
     action._apply_software_upgrade = Mock()
@@ -833,6 +836,7 @@ def test_software_upgrade_run_ugprade_succeed(zpecloud_action_base_run, action):
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "5.9.10"
@@ -847,8 +851,6 @@ def test_software_upgrade_run_ugprade_succeed(zpecloud_action_base_run, action):
         [{"id": os_id, "name": os_name}],
         None,
     )
-
-    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     job_id = "999"
     action._apply_software_upgrade = Mock()
@@ -886,6 +888,7 @@ def test_software_upgrade_run_downgrade_succeed(zpecloud_action_base_run, action
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "5.9.10"
@@ -900,8 +903,6 @@ def test_software_upgrade_run_downgrade_succeed(zpecloud_action_base_run, action
         [{"id": os_id, "name": os_name}],
         None,
     )
-
-    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     job_id = "999"
     action._apply_software_upgrade = Mock()

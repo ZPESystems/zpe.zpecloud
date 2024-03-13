@@ -261,6 +261,17 @@ class ActionModule(ZPECloudActionBase):
         self._log_info("Authenticating on ZPE Cloud ...")
         self._create_api_session()
 
+        # Check if device can receive profiles
+        is_device_ready, err = self._api_session.can_apply_profile_on_device(
+            self.host_serial_number
+        )
+        if err or not is_device_ready:
+            result["unreachable"] = True
+            result["msg"] = (
+                f"Nodegrid device is not ready to receive profiles via ZPE Cloud. {err}."
+            )
+            return result
+
         # Get device id
         device, err = self._api_session.fetch_device_by_serial_number(
             self.host_serial_number
@@ -316,17 +327,6 @@ class ActionModule(ZPECloudActionBase):
         os_version_id = self._get_version_id_from_list(version, os_versions)
         if os_version_id is None:
             raise AnsibleActionFail("Failed to get Nodegrid OS version ID.")
-
-        # Check if device can receive profiles
-        is_device_ready, err = self._api_session.can_apply_profile_on_device(
-            self.host_serial_number
-        )
-        if err or not is_device_ready:
-            result["unreachable"] = True
-            result["msg"] = (
-                f"Nodegrid device is not ready to receive profiles via ZPE Cloud. {err}."
-            )
-            return result
 
         # Apply software upgrade profile
         job_id = self._apply_software_upgrade(self.host_zpecloud_id, os_version_id)
