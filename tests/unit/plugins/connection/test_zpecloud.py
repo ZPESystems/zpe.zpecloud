@@ -100,12 +100,45 @@ def test_connect_success(mock_zpecloud_api, connection):
         None,
     )
 
+    mock_zpecloud_api.can_apply_profile_on_device.return_value = (True, None)
+
     connection._connect()
 
     assert mock_zpecloud_api.fetch_device_by_serial_number.call_count == 1
     mock_zpecloud_api.fetch_device_by_serial_number.assert_called_with(remote_addr)
     assert connection.host_serial_number == remote_addr
     assert connection.host_zpecloud_id == host_id
+
+
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
+def test_connect_device_not_ready(mock_zpecloud_api, connection):
+    """Connect raise error because device is not ready to receive profiles.
+    Device is considered ready if enrolled, and with status online or failover."""
+    connection._api_session = mock_zpecloud_api
+    connection.host_serial_number = None
+    connection.host_zpecloud_id = None
+
+    remote_addr = "123456789"
+    connection._play_context = Mock(remote_addr=remote_addr)
+
+    host_id = "4321"
+    mock_zpecloud_api.fetch_device_by_serial_number.return_value = (
+        {"id": host_id},
+        None,
+    )
+
+    mock_zpecloud_api.can_apply_profile_on_device.return_value = (False, "some error")
+
+    with pytest.raises(AnsibleConnectionFailure) as err:
+        connection._connect()
+
+    assert mock_zpecloud_api.fetch_device_by_serial_number.call_count == 1
+    mock_zpecloud_api.fetch_device_by_serial_number.assert_called_with(remote_addr)
+    assert connection.host_serial_number == remote_addr
+    assert connection.host_zpecloud_id == host_id
+    assert "Nodegrid device is not ready to receive profiles via ZPE Cloud." in str(
+        err.value
+    )
 
 
 """ Tests for _connect """
