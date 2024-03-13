@@ -315,6 +315,7 @@ def test_software_upgrade_run_failed_fetch_device(zpecloud_action_base_run, acti
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
     action._api_session.fetch_device_by_serial_number.return_value = (
         None,
         "some error",
@@ -345,6 +346,7 @@ def test_software_upgrade_run_failed_get_device_id(zpecloud_action_base_run, act
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     action._api_session.fetch_device_by_serial_number.return_value = ({}, None)
 
@@ -358,7 +360,9 @@ def test_software_upgrade_run_failed_get_device_id(zpecloud_action_base_run, act
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_software_upgrade_run_failed_get_device_version(zpecloud_action_base_run, action):
+def test_software_upgrade_run_failed_get_device_version(
+    zpecloud_action_base_run, action
+):
     """Failed to get device version while search by serial number."""
     zpecloud_action_base_run.return_value = {}
 
@@ -373,6 +377,7 @@ def test_software_upgrade_run_failed_get_device_version(zpecloud_action_base_run
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     action._api_session.fetch_device_by_serial_number.return_value = (
@@ -405,6 +410,7 @@ def test_software_upgrade_run_same_version_return_ok(zpecloud_action_base_run, a
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "6.0.0"
@@ -438,6 +444,7 @@ def test_software_upgrade_run_get_wrong_version(zpecloud_action_base_run, action
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "6.1"
@@ -471,6 +478,7 @@ def test_software_upgrade_run_downgrade_not_allowed(zpecloud_action_base_run, ac
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "6.1.0"
@@ -504,6 +512,7 @@ def test_software_upgrade_run_fail_get_release(zpecloud_action_base_run, action)
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "5.10.0"
@@ -542,6 +551,7 @@ def test_software_upgrade_run_not_release_match(zpecloud_action_base_run, action
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "5.100.0"
@@ -562,6 +572,55 @@ def test_software_upgrade_run_not_release_match(zpecloud_action_base_run, action
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
+def test_software_upgrade_run_fail_device_not_ready(zpecloud_action_base_run, action):
+    """Software upgrade job failed because device is not ready to receive profiles.
+    Device is considered ready if enrolled, and with status online or failover."""
+    zpecloud_action_base_run.return_value = {}
+
+    _options = {"version": "5.10.10", "allow_downgrade": False}
+
+    def _get_option_side_effect(*args):
+        return _options.get(*args)
+
+    action._task.args.get.side_effect = _get_option_side_effect
+
+    remote_addr = "1234"
+    action._play_context.remote_addr = remote_addr
+
+    action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (False, "some error")
+
+    device_id = "567"
+    device_version = "5.9.10"
+    action._api_session.fetch_device_by_serial_number.return_value = (
+        {"id": device_id, "version": device_version},
+        None,
+    )
+
+    os_name = "v5.10.10 (Jan 15 2024 - 07:45:20)"
+    os_id = "12"
+    action._api_session.get_available_os_version.return_value = (
+        [{"id": os_id, "name": os_name}],
+        None,
+    )
+
+    job_id = "999"
+    action._apply_software_upgrade = Mock()
+    action._apply_software_upgrade.return_value = job_id
+
+    result = action.run()
+
+    assert action.host_serial_number == remote_addr
+    assert result["unreachable"] is True
+    assert (
+        "Nodegrid device is not ready to receive profiles via ZPE Cloud"
+        in result["msg"]
+    )
+
+
+@patch(
+    "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
+)
 def test_software_upgrade_run_wait_job_failed(zpecloud_action_base_run, action):
     """Software upgrade job failed."""
     zpecloud_action_base_run.return_value = {}
@@ -577,6 +636,7 @@ def test_software_upgrade_run_wait_job_failed(zpecloud_action_base_run, action):
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "5.9.10"
@@ -624,6 +684,7 @@ def test_software_upgrade_run_failed_get_detail(zpecloud_action_base_run, action
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "5.9.10"
@@ -658,7 +719,9 @@ def test_software_upgrade_run_failed_get_detail(zpecloud_action_base_run, action
 @patch(
     "ansible_collections.zpe.zpecloud.plugins.action.software_upgrade.ZPECloudActionBase.run"
 )
-def test_software_upgrade_run_failed_get_device_version_detail(zpecloud_action_base_run, action):
+def test_software_upgrade_run_failed_get_device_version_detail(
+    zpecloud_action_base_run, action
+):
     """Device version not found on detail content."""
     zpecloud_action_base_run.return_value = {}
 
@@ -673,6 +736,7 @@ def test_software_upgrade_run_failed_get_device_version_detail(zpecloud_action_b
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "5.9.10"
@@ -722,6 +786,7 @@ def test_software_upgrade_run_ugprade_fail(zpecloud_action_base_run, action):
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "5.9.10"
@@ -771,6 +836,7 @@ def test_software_upgrade_run_ugprade_succeed(zpecloud_action_base_run, action):
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "5.9.10"
@@ -822,6 +888,7 @@ def test_software_upgrade_run_downgrade_succeed(zpecloud_action_base_run, action
     action._play_context.remote_addr = remote_addr
 
     action._create_api_session = Mock()
+    action._api_session.can_apply_profile_on_device.return_value = (True, None)
 
     device_id = "567"
     device_version = "5.9.10"

@@ -398,3 +398,35 @@ class ZPECloudAPI:
             return None, err
 
         return content, None
+
+    def can_apply_profile_on_device(self, serial_number: str) -> BooleanError:
+        """Check if is possible to apply profile to device.
+        Requirements:
+        * User must have permission for this device
+        * Device must be enrolled
+        * Device must be in online status, or failover
+        """
+
+        # search serial number in enrolled devices
+        content, err = self._search_devices(serial_number, True)
+        if err:
+            return False, err
+
+        content = json.loads(content)
+        device_list = content.get("list", None)
+
+        if device_list is None:
+            return False, "Device is not enrolled, or user does not have permission"
+
+        for device in device_list:
+            device_serial_number = device.get("serial_number", None)
+            device_status = device.get("device_status", None)
+
+            if device_serial_number == serial_number:
+                if device_status == "Online" or device_status == "Failover":
+                    return True, None
+
+                else:
+                    return False, f"Device status is {device_status}"
+
+        return False, "Device is not enrolled, or user does not have permission"

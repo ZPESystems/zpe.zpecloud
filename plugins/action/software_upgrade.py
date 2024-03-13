@@ -261,6 +261,17 @@ class ActionModule(ZPECloudActionBase):
         self._log_info("Authenticating on ZPE Cloud ...")
         self._create_api_session()
 
+        # Check if device can receive profiles
+        is_device_ready, err = self._api_session.can_apply_profile_on_device(
+            self.host_serial_number
+        )
+        if err or not is_device_ready:
+            result["unreachable"] = True
+            result["msg"] = (
+                f"Nodegrid device is not ready to receive profiles via ZPE Cloud. {err}."
+            )
+            return result
+
         # Get device id
         device, err = self._api_session.fetch_device_by_serial_number(
             self.host_serial_number
