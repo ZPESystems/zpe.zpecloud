@@ -36,9 +36,9 @@ def inventory():
 )
 def test_verify_file_wrong_filename(tmp_path, inventory, filename, expected):
     """Inventory without correct file name must fail verification."""
-    file = tmp_path / f"{filename}"
-    file.touch()
-    assert inventory.verify_file(str(file)) is expected
+    inventory_file = tmp_path / f"{filename}"
+    inventory_file.touch()
+    assert inventory.verify_file(str(inventory_file)) is expected
 
 
 """ Tests for verify_file """
