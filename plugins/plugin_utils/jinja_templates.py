@@ -169,7 +169,7 @@ if __name__ == "__main__":
 def _render_template(template: str, context: Dict) -> StringError:
     """Render specific template based on context dictionary."""
     try:
-        jinja_env = Environment(autoescape=True)
+        jinja_env = Environment()
         jinja_template = jinja_env.from_string(template)
         render_template = jinja_template.render(context)
         return render_template, None
