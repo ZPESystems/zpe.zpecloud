@@ -112,7 +112,9 @@ class ActionModule(ZPECloudActionBase):
 
         return False, None
 
-    def _get_version_id_from_list(self, version: str, content: List[Dict]) -> str:
+    def _get_version_id_from_list(
+        self, version: str, content: List[Dict]
+    ) -> Optional[str]:
         """Get ID from Nodegrid version based on desired version."""
         for os_entry in content:
             os_entry_name = os_entry.get("name", None)

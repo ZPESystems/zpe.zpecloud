@@ -10,7 +10,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 import json
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Optional
 from urllib.parse import urlparse
 from datetime import datetime
 
@@ -304,7 +304,7 @@ class ZPECloudAPI:
     def fetch_device_by_serial_number(self, serial_number: str) -> DictError:
         """Fetch Nodegrid device based on serial number."""
 
-        def process_response(serial_number: str, content: List[Dict]) -> str:
+        def process_response(serial_number: str, content: List[Dict]) -> Optional[str]:
             """Check if serial number matches with some device from content list."""
             content = json.loads(content)
             device_list = content.get("list", None)

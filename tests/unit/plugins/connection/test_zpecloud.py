@@ -338,11 +338,6 @@ def close_connection(mock_zpecloud_api, connection, session, expected):
     mock_zpecloud_api.return_value.logout = MagicMock()
     mock_zpecloud_api.return_value.logout.return_value = ("", None)
 
-    # TODO - pytest is return mock class instead of string
-    """[WARNING]: ZPE Cloud connection - Host ID: None - Host SN: None - Failed to
-close session from ZPE Cloud. Error: <MagicMock
-name='mock.logout().__getitem__()' id='139724302534640'>."""
-
     connection.close()
 
     if expected:

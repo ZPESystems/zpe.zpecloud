@@ -18,8 +18,6 @@ from ansible_collections.zpe.zpecloud.plugins.plugin_utils.types import (
     BytesError,
 )
 
-# todo - check if compression algorithm is supported
-
 
 def read_file(in_path: str) -> BytesError:
     data = b""
@@ -40,7 +38,6 @@ def write_file(out_path: str, data: str) -> BooleanError:
         return None, f"Failed to write file {out_path}. Error: {err}"
 
 
-# TODO - verify types
 def encode_base64(data: bytes) -> BytesError:
     enc_data = b""
     try:
@@ -65,7 +62,6 @@ def decode_base64(data: bytes) -> BytesError:
 def compress_file(data: str, filename: str) -> BytesError:
     zipped_str = b""
     mem_zip = BytesIO()
-    # TODO - get algorithm from flag zipfile.ZIP_DEFLATED and check which should be used based on user's computer
     try:
         with zipfile.ZipFile(mem_zip, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
             zf.writestr(filename, data)
