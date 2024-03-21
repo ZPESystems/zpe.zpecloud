@@ -7,8 +7,6 @@ authors:
   - Leonardo Fernandes <leonardo.fernandes@zpesystems.com>
   - Daniel Nesvera <daniel.nesvera@zpesystems.com>
 tags: [zpe, zpesystems, zpecloud, nodegrid, ng, nodegridos, management, networking, security, cloud]
-#dependencies:
-#  "zpe.nodegrid": ">=1.0.0"
 license:
   - GPL-2.0-or-later
 license_file: LICENSE
