@@ -1,7 +1,7 @@
 namespace: zpe
 name: zpecloud
-version: 1.0.0
-description: your collection description
+version: 1.0.1
+description: An Ansible collection to communicate with Nodegrid devices via ZPE Cloud
 authors:
   - Rene Neumann <rene.neumann@zpesystems.com>
   - Leonardo Fernandes <leonardo.fernandes@zpesystems.com>
