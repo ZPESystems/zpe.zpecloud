@@ -5,7 +5,7 @@ Documentation for the collection.
 # How to install
 
 - git clone https://github.com/ZPESystems/zpe.zpecloud.git
-- cd zpe.cloud
+- cd zpe.zpecloud/
 - ansible-galaxy collection build
 - ansible-galaxy collection install zpe-zpecloud-1.0.0.tar.gz
 
