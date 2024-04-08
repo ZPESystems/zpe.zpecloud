@@ -10,7 +10,7 @@ Documentation for the collection.
 - ansible-galaxy collection install zpe-zpecloud-1.0.0.tar.gz
 
 Note: If you want to reinstall the collection, it is necessary to remove it first
-- rm -rf /etc/ansible/collections/ansible_collections/zpe/
+- rm -rf /etc/ansible/collections/ansible_collections/zpe/zpecloud/
 
 
 # How to test
