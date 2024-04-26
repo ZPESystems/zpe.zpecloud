@@ -326,11 +326,11 @@ class Connection(ConnectionBase):
             operation_output_file_url = content.get("output_file", None)
 
             if (
-                operation_status == "Successful"
+                (operation_status == "Successful" or operation_status == "Failed")
                 and operation_output_file_url
                 and len(operation_output_file_url) > 0
             ):
-                self._log_info(f"Job {job_id} finished successfully")
+                self._log_info(f"Job {job_id} finished with status {operation_status}")
                 r = requests.get(operation_output_file_url)
 
                 if isinstance(r.content, bytes):
@@ -338,11 +338,7 @@ class Connection(ConnectionBase):
                 else:
                     return r.content, None
 
-            elif (
-                operation_status == "Failed"
-                or operation_status == "Cancelled"
-                or operation_status == "Timeout"
-            ):
+            elif operation_status == "Cancelled" or operation_status == "Timeout":
                 self._log_info(f"Job {job_id} finished with status {operation_status}")
 
                 if operation_output_file_url and len(operation_output_file_url) > 0:
