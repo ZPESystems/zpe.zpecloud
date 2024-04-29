@@ -543,10 +543,10 @@ def test_wait_job_to_finish_missing_status(mock_zpecloud_api, connection):
 
 @pytest.mark.parametrize(
     ("job_status"),
-    [("Cancelled"), ("Timeout"), ("Failed")],
+    [("Cancelled"), ("Timeout")],
 )
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
-def test_wait_job_to_finish_job_fail(mock_zpecloud_api, connection, job_status):
+def test_wait_job_to_finish_job_failure(mock_zpecloud_api, connection, job_status):
     """Test wait job to finish but job finished with some failure status."""
     connection._api_session = mock_zpecloud_api
 
@@ -557,6 +557,39 @@ def test_wait_job_to_finish_job_fail(mock_zpecloud_api, connection, job_status):
 
     assert content is None
     assert job_status in err
+
+
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.time")
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.requests")
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
+def test_wait_job_to_finish_job_failed(
+    mock_zpecloud_api, mock_requests, mock_time, connection
+):
+    """
+    Test wait job to finish with job failed status.
+    In case of failure status with stdout available, the plugin will send stdout back to Ansible to decide if execution failed.
+    """
+    connection._api_session = mock_zpecloud_api
+
+    failed_status = json.dumps(
+        {"operation": {"status": "Failed"}, "output_file": "someurl"}
+    )
+
+    mock_zpecloud_api.get_job.return_value = (failed_status, None)
+
+    mock_time.time.return_value = 0
+    mock_time.sleep.return_value = None
+
+    job_output = "somethinginbase64"
+    mock_requests.get.return_value = Mock(content=job_output)
+
+    content, err = connection._wait_job_to_finish("12314")
+
+    assert err is None
+    assert content == job_output
+
+    assert mock_zpecloud_api.get_job.call_count == 1
+    assert mock_requests.get.call_count == 1
 
 
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.time")
