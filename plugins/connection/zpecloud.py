@@ -144,21 +144,15 @@ class Connection(ConnectionBase):
 
     transport = "zpe.zpecloud.zpecloud"
     has_pipelining = False
-    filename_inside_zip = (
-        "original-file"  # name of important file located inside compressed file
-    )
+    filename_inside_zip = "original-file"  # name of important file located inside compressed file
 
     def _log_info(self, message: str) -> None:
         """Log information."""
-        display.v(
-            f"ZPE Cloud connection - Host ID: {self.host_zpecloud_id} - Host SN: {self.host_serial_number} - {message}."
-        )
+        display.v(f"ZPE Cloud connection - Host ID: {self.host_zpecloud_id} - Host SN: {self.host_serial_number} - {message}.")
 
     def _log_warning(self, message: str) -> None:
         """Log warning."""
-        display.warning(
-            f"ZPE Cloud connection - Host ID: {self.host_zpecloud_id} - Host SN: {self.host_serial_number} - {message}."
-        )
+        display.warning(f"ZPE Cloud connection - Host ID: {self.host_zpecloud_id} - Host SN: {self.host_serial_number} - {message}.")
 
     def __init__(self, *args, **kwargs) -> None:
         """Initialize ZPE Cloud connection plugin."""
@@ -175,9 +169,7 @@ class Connection(ConnectionBase):
         self.max_file_size_fetch_file = 100 * MEGABYTE  # bytes
 
         if REQUESTS_IMPORT_ERROR:
-            raise AnsibleConnectionFailure(
-                "Requests library must be installed to use this plugin."
-            )
+            raise AnsibleConnectionFailure("Requests library must be installed to use this plugin.")
 
         self._log_info("[__init__ override]")
 
@@ -189,45 +181,29 @@ class Connection(ConnectionBase):
         if url is None:
             url = "https://zpecloud.com"
 
-        username = self.get_option("username", None) or os.environ.get(
-            "ZPECLOUD_USERNAME", None
-        )
+        username = self.get_option("username", None) or os.environ.get("ZPECLOUD_USERNAME", None)
         if username is None:
-            raise AnsibleConnectionFailure(
-                "Could not retrieve ZPE Cloud username from plugin configuration or environment."
-            )
+            raise AnsibleConnectionFailure("Could not retrieve ZPE Cloud username from plugin configuration or environment.")
 
-        password = self.get_option("password", None) or os.environ.get(
-            "ZPECLOUD_PASSWORD", None
-        )
+        password = self.get_option("password", None) or os.environ.get("ZPECLOUD_PASSWORD", None)
         if password is None:
-            raise AnsibleConnectionFailure(
-                "Could not retrieve ZPE Cloud password from plugin configuration or environment."
-            )
+            raise AnsibleConnectionFailure("Could not retrieve ZPE Cloud password from plugin configuration or environment.")
 
-        organization = self.get_option("organization", None) or os.environ.get(
-            "ZPECLOUD_ORGANIZATION", None
-        )
+        organization = self.get_option("organization", None) or os.environ.get("ZPECLOUD_ORGANIZATION", None)
 
         try:
             self._api_session = ZPECloudAPI(url)
         except Exception as err:
-            raise AnsibleConnectionFailure(
-                f"Failed to authenticate on ZPE Cloud. Error: {err}."
-            )
+            raise AnsibleConnectionFailure(f"Failed to authenticate on ZPE Cloud. Error: {err}.")
 
         result, err = self._api_session.authenticate_with_password(username, password)
         if err:
-            raise AnsibleConnectionFailure(
-                f"Failed to authenticate on ZPE Cloud. Error: {err}."
-            )
+            raise AnsibleConnectionFailure(f"Failed to authenticate on ZPE Cloud. Error: {err}.")
 
         if organization:
             result, err = self._api_session.change_organization(organization)
             if err:
-                raise AnsibleConnectionFailure(
-                    f"Failed to switch organization. Error: {err}."
-                )
+                raise AnsibleConnectionFailure(f"Failed to switch organization. Error: {err}.")
 
     def _wrapper_exec_command(self, cmd: str) -> str:
         """Wrap Ansible command inside a bash command that will be executed by ZPE Cloud."""
@@ -271,9 +247,7 @@ class Connection(ConnectionBase):
                 f.close()
 
         if err:
-            raise AnsibleError(
-                f"Failed to create script profile in ZPE Cloud. Error: {err}."
-            )
+            raise AnsibleError(f"Failed to create script profile in ZPE Cloud. Error: {err}.")
 
         profile_id = response.get("id", None)
         if profile_id is None:
@@ -285,9 +259,7 @@ class Connection(ConnectionBase):
         """Delete script profile from ZPE Cloud."""
         err = self._api_session.delete_profile(profile_id)[1]
         if err:
-            self._log_warning(
-                f"Failed to delete profile from ZPE Cloud. ID: {profile_id}. Error: {err}"
-            )
+            self._log_warning(f"Failed to delete profile from ZPE Cloud. ID: {profile_id}. Error: {err}")
 
     def _apply_profile(self, device_id: str, profile_id: str) -> str:
         """Apply script profile to device."""
@@ -296,9 +268,7 @@ class Connection(ConnectionBase):
         schedule = datetime.utcnow()
         content, err = self._api_session.apply_profile(device_id, profile_id, schedule)
         if err:
-            raise AnsibleError(
-                f"Failed to apply script profile {profile_id} to device {self.host_serial_number}. Error: {err}."
-            )
+            raise AnsibleError(f"Failed to apply script profile {profile_id} to device {self.host_serial_number}. Error: {err}.")
 
         resp = json.loads(content)
         job_id = resp.get("job_id")
@@ -310,14 +280,10 @@ class Connection(ConnectionBase):
         request_attempt = 0
         start_time = time.time()
         while (time.time() - start_time) <= self.timeout_wait_job_finish:
-            self._log_info(
-                f"Checking job status for {job_id} - Attempt {request_attempt}"
-            )
+            self._log_info(f"Checking job status for {job_id} - Attempt {request_attempt}")
             content, err = self._api_session.get_job(job_id)
             if err:
-                raise AnsibleError(
-                    f"Failed to get status for job {job_id}. Err: {err}."
-                )
+                raise AnsibleError(f"Failed to get status for job {job_id}. Err: {err}.")
             content = json.loads(content)
             operation_status = content.get("operation", {}).get("status", None)
             if operation_status is None:
@@ -330,11 +296,7 @@ class Connection(ConnectionBase):
             # judge the profile execution. Ansible will process the output file to decide it later.
             # Cancelled, and timeout, are status generated by ZPE Cloud. In this case,
             # ZPE Cloud is breaking the tunnel, and for this reason connection will raise an error.
-            if (
-                (operation_status == "Successful" or operation_status == "Failed")
-                and operation_output_file_url
-                and len(operation_output_file_url) > 0
-            ):
+            if (operation_status == "Successful" or operation_status == "Failed") and operation_output_file_url and len(operation_output_file_url) > 0:
                 self._log_info(f"Job {job_id} finished with status {operation_status}")
                 r = requests.get(operation_output_file_url)
 
@@ -364,9 +326,7 @@ class Connection(ConnectionBase):
                         f"Job finished with status {operation_status}. Not output content.",
                     )
 
-            delay = exponential_backoff_delay(
-                request_attempt, self.max_delay_wait_job_finish
-            )
+            delay = exponential_backoff_delay(request_attempt, self.max_delay_wait_job_finish)
             request_attempt += 1
             time.sleep(delay)
 
@@ -399,9 +359,7 @@ class Connection(ConnectionBase):
 
     def _wrapper_put_file(self, file_content: str, out_path: str) -> str:
         """ """
-        profile_content, err = render_put_file(
-            out_path, file_content, self.filename_inside_zip
-        )
+        profile_content, err = render_put_file(out_path, file_content, self.filename_inside_zip)
         if err:
             raise AnsibleError(f"Failed to render put file profile. Error: {err}.")
 
@@ -409,9 +367,7 @@ class Connection(ConnectionBase):
 
     def _wrapper_fetch_file(self, in_path: str) -> str:
         """ """
-        profile_content, err = render_fetch_file(
-            in_path, self.filename_inside_zip, self.max_file_size_fetch_file
-        )
+        profile_content, err = render_fetch_file(in_path, self.filename_inside_zip, self.max_file_size_fetch_file)
         if err:
             raise AnsibleError(f"Failed to render fetch file profile. Error: {err}.")
 
@@ -429,42 +385,28 @@ class Connection(ConnectionBase):
         # get reference for device in ZPE Cloud
         if self.host_serial_number is None or self.host_zpecloud_id is None:
             if self._play_context.remote_addr is None:
-                raise AnsibleConnectionFailure(
-                    "Remote serial number from host was not found."
-                )
+                raise AnsibleConnectionFailure("Remote serial number from host was not found.")
 
             self.host_serial_number = self._play_context.remote_addr
 
-            device, err = self._api_session.fetch_device_by_serial_number(
-                self.host_serial_number
-            )
+            device, err = self._api_session.fetch_device_by_serial_number(self.host_serial_number)
             if err:
-                raise AnsibleConnectionFailure(
-                    f"Failed to fetch host ID. Error: {err}."
-                )
+                raise AnsibleConnectionFailure(f"Failed to fetch host ID. Error: {err}.")
 
             host_id = device.get("id", None)
             if host_id is None:
-                raise AnsibleConnectionFailure(
-                    f"Failed to find host ID for serial number: {self.host_serial_number}."
-                )
+                raise AnsibleConnectionFailure(f"Failed to find host ID for serial number: {self.host_serial_number}.")
 
             self.host_zpecloud_id = host_id
 
         # check if device can receive profiles
-        is_device_ready, err = self._api_session.can_apply_profile_on_device(
-            self.host_serial_number
-        )
+        is_device_ready, err = self._api_session.can_apply_profile_on_device(self.host_serial_number)
         if err or not is_device_ready:
-            raise AnsibleConnectionFailure(
-                f"Nodegrid device is not ready to receive profiles via ZPE Cloud. {err}."
-            )
+            raise AnsibleConnectionFailure(f"Nodegrid device is not ready to receive profiles via ZPE Cloud. {err}.")
 
         return self
 
-    def exec_command(
-        self, cmd: str, in_data: bytes = None, sudoable: bool = True
-    ) -> Tuple[bool, str, str]:
+    def exec_command(self, cmd: str, in_data: bytes = None, sudoable: bool = True) -> Tuple[bool, str, str]:
         """Ansible connection override function responsible to execute commands on host.
         Commands created by Ansible will be wrapped on a script profile to be executed via ZPE Cloud.
         """
@@ -479,9 +421,7 @@ class Connection(ConnectionBase):
         # To: su ansible -c 'echo ~ && sleep 0' for default ansible user
         if self.become is None:
             if self._play_context.executable not in cmd:
-                raise AnsibleError(
-                    "Executable process in command does not match expected process."
-                )
+                raise AnsibleError("Executable process in command does not match expected process.")
 
             cmd = cmd.replace(self._play_context.executable, "su ansible")
 
@@ -513,15 +453,11 @@ class Connection(ConnectionBase):
         self._log_info("[put_file override]")
 
         if not os.path.exists(to_bytes(in_path, errors="surrogate_or_strict")):
-            raise AnsibleFileNotFound(
-                f"File or module does not exist. Path: {in_path}."
-            )
+            raise AnsibleFileNotFound(f"File or module does not exist. Path: {in_path}.")
 
         file_stat = os.stat(to_bytes(in_path, errors="surrogate_or_strict"))
         if file_stat.st_size > self.max_file_size_put_file:
-            raise AnsibleError(
-                f"Size of file {in_path} is bigger than limit of {self.max_file_size_put_file} bytes."
-            )
+            raise AnsibleError(f"Size of file {in_path} is bigger than limit of {self.max_file_size_put_file} bytes.")
 
         file_content, err = read_file(in_path)
         if err:
@@ -585,9 +521,7 @@ class Connection(ConnectionBase):
         if self._api_session:
             err = self._api_session.logout()[1]
             if err:
-                self._log_warning(
-                    f"Failed to close session from ZPE Cloud. Error: {err}"
-                )
+                self._log_warning(f"Failed to close session from ZPE Cloud. Error: {err}")
 
     def reset(self) -> None:
         """Ansible connection override function responsible to reset tunnel to host.
