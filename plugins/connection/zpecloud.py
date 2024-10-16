@@ -283,7 +283,13 @@ class Connection(ConnectionBase):
             self._log_info(f"Checking job status for {job_id} - Attempt {request_attempt}")
             content, err = self._api_session.get_job(job_id)
             if err:
-                raise AnsibleError(f"Failed to get status for job {job_id}. Err: {err}.")
+                # sometimes request may fail with gateway timeout
+                self._log_warning(f"Failed to get status for job {job_id}. Err: {err}.")
+                delay = exponential_backoff_delay(request_attempt, self.max_delay_wait_job_finish)
+                request_attempt += 1
+                time.sleep(delay)
+                continue
+
             content = json.loads(content)
             operation_status = content.get("operation", {}).get("status", None)
             if operation_status is None:

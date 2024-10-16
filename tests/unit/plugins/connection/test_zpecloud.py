@@ -483,14 +483,24 @@ def test_create_api_session_switch_organization_fail(mock_zpe_cloud_api, connect
 """ Tests for _wait_job_to_finish """
 
 
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.Display.warning")
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.time")
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
-def test_wait_job_to_finish_request_fail(mock_zpecloud_api, connection):
+def test_wait_job_to_finish_request_fail(mock_zpecloud_api, mock_time, mock_display_warning, connection):
     """Test wait job to finish but API request failed."""
     connection._api_session = mock_zpecloud_api
     mock_zpecloud_api.get_job.return_value = (None, "Some error")
+    mock_display_warning.return_value = None
 
-    with pytest.raises(AnsibleError):
-        connection._wait_job_to_finish("1234")
+    mock_time.time.side_effect = [0, 0, 3601]
+    mock_time.sleep.return_value = None
+
+    content, err = connection._wait_job_to_finish("1234")
+
+    assert mock_time.time.call_count == 3
+    assert mock_display_warning.call_count == 1
+    assert content == None
+    assert err != None
 
 
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
