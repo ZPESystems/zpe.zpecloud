@@ -136,18 +136,14 @@ def test_connect_device_not_ready(mock_zpecloud_api, connection):
     mock_zpecloud_api.fetch_device_by_serial_number.assert_called_with(remote_addr)
     assert connection.host_serial_number == remote_addr
     assert connection.host_zpecloud_id == host_id
-    assert "Nodegrid device is not ready to receive profiles via ZPE Cloud." in str(
-        err.value
-    )
+    assert "Nodegrid device is not ready to receive profiles via ZPE Cloud." in str(err.value)
 
 
 """ Tests for _connect """
 """ Tests for exec_command """
 
 
-@patch(
-    "ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ConnectionBase.exec_command"
-)
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ConnectionBase.exec_command")
 def test_exec_command_as_default_user(mock_exec_command_super, connection):
     """Ansible runs profiles as Ansible user by default."""
     mock_exec_command_super.return_value = None
@@ -180,9 +176,7 @@ def test_exec_command_as_default_user(mock_exec_command_super, connection):
 """ Tests for put_file """
 
 
-@patch(
-    "ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ConnectionBase.put_file"
-)
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ConnectionBase.put_file")
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.os")
 def test_put_file_file_not_exist(mock_os, mock_super_put_file, connection):
     """Try to send a file to host that does not exist."""
@@ -199,9 +193,7 @@ def test_put_file_file_not_exist(mock_os, mock_super_put_file, connection):
     mock_os.path.exists.assert_called_with(in_path.encode("utf-8"))
 
 
-@patch(
-    "ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ConnectionBase.put_file"
-)
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ConnectionBase.put_file")
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.os")
 def test_put_file_size_too_big(mock_os, mock_super_put_file, connection):
     """Try to send a file to host that is too big."""
@@ -220,13 +212,9 @@ def test_put_file_size_too_big(mock_os, mock_super_put_file, connection):
 
 
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.read_file")
-@patch(
-    "ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ConnectionBase.put_file"
-)
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ConnectionBase.put_file")
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.os")
-def test_put_file_fail_read_file(
-    mock_os, mock_super_put_file, mock_read_file, connection
-):
+def test_put_file_fail_read_file(mock_os, mock_super_put_file, mock_read_file, connection):
     """Try to send a file to host but failed to read file."""
     mock_super_put_file.return_value = None
     mock_os.path.exists.return_value = True
@@ -245,13 +233,9 @@ def test_put_file_fail_read_file(
 
 
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.read_file")
-@patch(
-    "ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ConnectionBase.put_file"
-)
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ConnectionBase.put_file")
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.os")
-def test_put_file_fail_wait_job_finish(
-    mock_os, mock_super_put_file, mock_read_file, connection
-):
+def test_put_file_fail_wait_job_finish(mock_os, mock_super_put_file, mock_read_file, connection):
     """Try to send a file to host but failed to wait for job."""
     mock_super_put_file.return_value = None
     mock_os.path.exists.return_value = True
@@ -282,9 +266,7 @@ def test_put_file_fail_wait_job_finish(
 
 
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.read_file")
-@patch(
-    "ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ConnectionBase.put_file"
-)
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ConnectionBase.put_file")
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.os")
 def test_put_file_success(mock_os, mock_super_put_file, mock_read_file, connection):
     """Succeed to send file to host."""
@@ -375,9 +357,7 @@ def test_reset_connection(connection):
         {"username": "myuser@myemail.com", "password": None},
     ],
 )
-def test_create_api_session_missing_required_configuration_raise_error(
-    configuration, connection
-):
+def test_create_api_session_missing_required_configuration_raise_error(configuration, connection):
     """Playbook without credentials on variables, neither on env, must raise error."""
     _options = configuration
 
@@ -391,9 +371,7 @@ def test_create_api_session_missing_required_configuration_raise_error(
 
 
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
-def test_create_api_session_read_credentials_from_playbook_vars(
-    mock_zpe_cloud_api, connection
-):
+def test_create_api_session_read_credentials_from_playbook_vars(mock_zpe_cloud_api, connection):
     """Test reading configuration from playbook variables.
     Username, password, and organization are defined on playbook.
     """
@@ -414,18 +392,12 @@ def test_create_api_session_read_credentials_from_playbook_vars(
     connection._create_api_session()
 
     mock_zpe_cloud_api.assert_called_with("https://zpecloud.com")
-    mock_zpe_cloud_api.return_value.authenticate_with_password.assert_called_with(
-        _options.get("username"), _options.get("password")
-    )
-    mock_zpe_cloud_api.return_value.change_organization.assert_called_with(
-        _options.get("organization")
-    )
+    mock_zpe_cloud_api.return_value.authenticate_with_password.assert_called_with(_options.get("username"), _options.get("password"))
+    mock_zpe_cloud_api.return_value.change_organization.assert_called_with(_options.get("organization"))
 
 
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
-def test_create_api_session_read_credentials_from_env_variable(
-    mock_zpe_cloud_api, connection
-):
+def test_create_api_session_read_credentials_from_env_variable(mock_zpe_cloud_api, connection):
     """Test reading configuration from environment variables."""
     mock_zpe_cloud_api.return_value.authenticate_with_password.return_value = ("", None)
     mock_zpe_cloud_api.return_value.change_organization.return_value = (True, None)
@@ -444,18 +416,12 @@ def test_create_api_session_read_credentials_from_env_variable(
     connection._create_api_session()
 
     mock_zpe_cloud_api.assert_called_with("https://zpecloud.com")
-    mock_zpe_cloud_api.return_value.authenticate_with_password.assert_called_with(
-        _options.get("ZPECLOUD_USERNAME"), _options.get("ZPECLOUD_PASSWORD")
-    )
-    mock_zpe_cloud_api.return_value.change_organization.assert_called_with(
-        _options.get("ZPECLOUD_ORGANIZATION")
-    )
+    mock_zpe_cloud_api.return_value.authenticate_with_password.assert_called_with(_options.get("ZPECLOUD_USERNAME"), _options.get("ZPECLOUD_PASSWORD"))
+    mock_zpe_cloud_api.return_value.change_organization.assert_called_with(_options.get("ZPECLOUD_ORGANIZATION"))
 
 
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
-def test_create_api_session_zpe_cloud_api_authentication_fail(
-    mock_zpe_cloud_api, connection
-):
+def test_create_api_session_zpe_cloud_api_authentication_fail(mock_zpe_cloud_api, connection):
     """Failure while creating ZPECloudAPI instance."""
     mock_zpe_cloud_api.return_value.authenticate_with_password.return_value = (
         "",
@@ -472,9 +438,7 @@ def test_create_api_session_zpe_cloud_api_authentication_fail(
     with pytest.raises(AnsibleConnectionFailure):
         connection._create_api_session()
 
-    mock_zpe_cloud_api.return_value.authenticate_with_password.assert_called_with(
-        _options.get("username"), _options.get("password")
-    )
+    mock_zpe_cloud_api.return_value.authenticate_with_password.assert_called_with(_options.get("username"), _options.get("password"))
 
 
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
@@ -500,9 +464,7 @@ def test_create_api_session_switch_organization_fail(mock_zpe_cloud_api, connect
     with pytest.raises(AnsibleConnectionFailure):
         connection._create_api_session()
 
-    mock_zpe_cloud_api.return_value.change_organization.assert_called_with(
-        _options.get("organization")
-    )
+    mock_zpe_cloud_api.return_value.change_organization.assert_called_with(_options.get("organization"))
 
 
 """ Tests for _create_api_session """
@@ -521,14 +483,24 @@ def test_create_api_session_switch_organization_fail(mock_zpe_cloud_api, connect
 """ Tests for _wait_job_to_finish """
 
 
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.Display.warning")
+@patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.time")
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
-def test_wait_job_to_finish_request_fail(mock_zpecloud_api, connection):
+def test_wait_job_to_finish_request_fail(mock_zpecloud_api, mock_time, mock_display_warning, connection):
     """Test wait job to finish but API request failed."""
     connection._api_session = mock_zpecloud_api
     mock_zpecloud_api.get_job.return_value = (None, "Some error")
+    mock_display_warning.return_value = None
 
-    with pytest.raises(AnsibleError):
-        connection._wait_job_to_finish("1234")
+    mock_time.time.side_effect = [0, 0, 3601]
+    mock_time.sleep.return_value = None
+
+    content, err = connection._wait_job_to_finish("1234")
+
+    assert mock_time.time.call_count == 3
+    assert mock_display_warning.call_count == 1
+    assert content == None
+    assert err != None
 
 
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
@@ -562,18 +534,14 @@ def test_wait_job_to_finish_job_failure(mock_zpecloud_api, connection, job_statu
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.time")
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.requests")
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
-def test_wait_job_to_finish_job_failed(
-    mock_zpecloud_api, mock_requests, mock_time, connection
-):
+def test_wait_job_to_finish_job_failed(mock_zpecloud_api, mock_requests, mock_time, connection):
     """
     Test wait job to finish with job failed status.
     In case of failure status with stdout available, the plugin will send stdout back to Ansible to decide if execution failed.
     """
     connection._api_session = mock_zpecloud_api
 
-    failed_status = json.dumps(
-        {"operation": {"status": "Failed"}, "output_file": "someurl"}
-    )
+    failed_status = json.dumps({"operation": {"status": "Failed"}, "output_file": "someurl"})
 
     mock_zpecloud_api.get_job.return_value = (failed_status, None)
 
@@ -595,27 +563,18 @@ def test_wait_job_to_finish_job_failed(
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.time")
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.requests")
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
-def test_wait_job_to_finish_job_success(
-    mock_zpecloud_api, mock_requests, mock_time, connection
-):
+def test_wait_job_to_finish_job_success(mock_zpecloud_api, mock_requests, mock_time, connection):
     """Test wait job to finish with sequence of job status."""
     connection._api_session = mock_zpecloud_api
 
     sending_status = json.dumps({"operation": {"status": "Sending"}, "output_file": ""})
-    scheduled_status = json.dumps(
-        {"operation": {"status": "Scheduled"}, "output_file": ""}
-    )
+    scheduled_status = json.dumps({"operation": {"status": "Scheduled"}, "output_file": ""})
     started_status = json.dumps({"operation": {"status": "Started"}, "output_file": ""})
-    successful_status = json.dumps(
-        {"operation": {"status": "Successful"}, "output_file": "someurl"}
-    )
+    successful_status = json.dumps({"operation": {"status": "Successful"}, "output_file": "someurl"})
 
     mock_zpecloud_api.get_job = Mock()
     mock_zpecloud_api.get_job.side_effect = (
-        [(sending_status, None)] * 2
-        + [(scheduled_status, None)] * 2
-        + [(started_status, None)] * 2
-        + [(successful_status, None)]
+        [(sending_status, None)] * 2 + [(scheduled_status, None)] * 2 + [(started_status, None)] * 2 + [(successful_status, None)]
     )
 
     job_output = "somethinginbase64"
@@ -637,9 +596,7 @@ def test_wait_job_to_finish_job_success(
 
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.time")
 @patch("ansible_collections.zpe.zpecloud.plugins.connection.zpecloud.ZPECloudAPI")
-def test_wait_job_to_finish_job_ansible_timeout(
-    mock_zpecloud_api, mock_time, connection
-):
+def test_wait_job_to_finish_job_ansible_timeout(mock_zpecloud_api, mock_time, connection):
     """Ansible will timeout after some time polling job status."""
     connection._api_session = mock_zpecloud_api
 
@@ -652,8 +609,7 @@ def test_wait_job_to_finish_job_ansible_timeout(
         start_time,  # start time
         start_time + 10,  # first iteration
         start_time + 1000,  # second iteration
-        start_time
-        + connection.timeout_wait_job_finish,  # third iteration (equal to timeout)
+        start_time + connection.timeout_wait_job_finish,  # third iteration (equal to timeout)
         start_time + connection.timeout_wait_job_finish + 1,  # timeout
     ]
     mock_time.sleep.return_value = None
